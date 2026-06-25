@@ -1,0 +1,7 @@
+unstructured[pdf]
+langchain-text-splitters
+langchain-huggingface
+sentence-transformers
+weaviate-client
+groq
+python-dotenv
