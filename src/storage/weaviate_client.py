@@ -17,9 +17,11 @@ def crear_collection(client):
             name=WEAVIATE_COLLECTION,
             vectorizer_config=Configure.Vectorizer.none(),
             properties=[
-                Property(name="texto",  data_type=DataType.TEXT),
-                Property(name="tipo",   data_type=DataType.TEXT),
-                Property(name="fuente", data_type=DataType.TEXT),
+                Property(name="texto",    data_type=DataType.TEXT),
+                Property(name="tipo",     data_type=DataType.TEXT),
+                Property(name="fuente",   data_type=DataType.TEXT),
+                Property(name="pagina",   data_type=DataType.INT),
+                Property(name="tabla_id", data_type=DataType.TEXT),
             ]
         )
 
@@ -30,9 +32,11 @@ def almacenar_chunks(client, chunks, vectores, fuente):
         for chunk, vector in zip(chunks, vectores):
             batch.add_object(
                 properties={
-                    "texto":  chunk["texto"],
-                    "tipo":   chunk["tipo"],
-                    "fuente": fuente
+                    "texto":    chunk["texto"],
+                    "tipo":     chunk["tipo"],
+                    "fuente":   fuente,
+                    "pagina":   chunk.get("pagina", 0),
+                    "tabla_id": chunk.get("tabla_id", ""),
                 },
                 vector=vector
             )

@@ -8,7 +8,7 @@ pipeline = RAGPipeline()
 pipeline.indexar("data/service.pdf")
 
 pregunta = "¿Instalacion de wildfly como servicio?"
-respuesta = pipeline.consultar(pregunta)
+respuesta, chunks = pipeline.consultar(pregunta)
 
 print(f"Pregunta: {pregunta}")
 print(f"Respuesta: {respuesta}")
