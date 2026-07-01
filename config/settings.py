@@ -1,14 +1,12 @@
 from dotenv import load_dotenv
-
 import os
-
 load_dotenv()
 
 # API Keys
 GROQ_API_KEY    = os.getenv("GROQ_API_KEY")
 MINIMAX_API_KEY = os.getenv("MINIMAX_API_KEY")
 
-# LLM — proveedor: "minimax" o "groq"
+# LLM - provider: "minimax" or "groq"
 LLM_PROVIDER      = os.getenv("LLM_PROVIDER", "minimax")
 MINIMAX_BASE_URL  = "https://api.minimax.io/v1"
 MINIMAX_LLM_MODEL = os.getenv("MINIMAX_LLM_MODEL", "MiniMax-M2.7")
@@ -21,7 +19,7 @@ EMBEDDING_MODEL = "BAAI/bge-m3"
 CHUNK_SIZE       = 1000
 CHUNK_OVERLAP    = 300
 MIN_CHUNK_CHARS  = 30
-TABLE_CHUNK_SIZE = 800  # tablas largas se dividen por filas (~este tamaño)
+TABLE_CHUNK_SIZE = 800
 
 # Weaviate
 WEAVIATE_HOST       = "localhost"
@@ -30,8 +28,8 @@ WEAVIATE_COLLECTION = "Documento"
 
 # Retrieval
 TOP_K_CHUNKS         = 12
-HYBRID_ALPHA         = 0.3   # 0=solo BM25, 1=solo vector
-TABLE_QUERY_MAX      = 80    # chunks máx. al pedir una tabla completa
+HYBRID_ALPHA         = 0.3
+TABLE_QUERY_MAX      = 80
 
 # LLM
 TEMPERATURE       = 0.1
