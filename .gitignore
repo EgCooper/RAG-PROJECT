@@ -59,3 +59,5 @@ weaviate_data/
 
 # Documentos locales (PDFs sensibles o pesados)
 data/*.pdf
+
+data/

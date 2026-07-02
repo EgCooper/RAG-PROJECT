@@ -8,7 +8,7 @@ DATA_DIR = "data"
 
 pipeline = RAGPipeline()
 
-pdfs = [f for f in os.listdir(DATA_DIR) if f.endswith(".pdf")]
+pdfs = [f for f in os.listdir(DATA_DIR) if f.lower().endswith(".pdf")]
 
 if not pdfs:
     print("No se encontraron PDFs en la carpeta data/")
