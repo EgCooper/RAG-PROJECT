@@ -1,0 +1,102 @@
+[
+  {
+    "id": "x99_codigo",
+    "pregunta": "qué indica el código X99",
+    "tipo": "codigo_especifico",
+    "fuente": "Especificacion.Webservices",
+    "pagina": 15,
+    "keywords_contexto": ["X99", "recepción"],
+    "keywords_respuesta": ["X99", "recepción"]
+  },
+  {
+    "id": "x99_error",
+    "pregunta": "qué indica el error X99",
+    "tipo": "codigo_especifico",
+    "fuente": "Especificacion.Webservices",
+    "pagina": 15,
+    "keywords_contexto": ["X99"],
+    "keywords_respuesta": ["X99"]
+  },
+  {
+    "id": "ra01_codigo",
+    "pregunta": "qué indica el código RA01",
+    "tipo": "codigo_especifico",
+    "fuente": "Especificacion.Webservices",
+    "pagina": 14,
+    "keywords_contexto": ["RA01", "Cuenta no existe"],
+    "keywords_respuesta": ["RA01"]
+  },
+  {
+    "id": "lista_abonabilidad",
+    "pregunta": "lista todos los códigos de abonabilidad",
+    "tipo": "lista_tabla",
+    "fuente": "Especificacion.Webservices",
+    "keywords_contexto": ["0000", "RA01", "RA02"],
+    "keywords_respuesta": ["0000", "RA01"]
+  },
+  {
+    "id": "lista_excepciones",
+    "pregunta": "lista todos los códigos de excepción",
+    "tipo": "lista_tabla",
+    "fuente": "Manual Operacion",
+    "keywords_contexto": ["ERROR_EXCEPTION", "ERROR_"],
+    "keywords_respuesta": ["ERROR_"]
+  },
+  {
+    "id": "error_qrsimple_get",
+    "pregunta": "qué significa ERROR_QRSIMPLE_GET",
+    "tipo": "codigo_especifico",
+    "fuente": "Manual Operacion",
+    "keywords_contexto": ["ERROR_QRSIMPLE_GET", "2413"],
+    "keywords_respuesta": ["ERROR_QRSIMPLE_GET"]
+  },
+  {
+    "id": "codigo_2413",
+    "pregunta": "qué indica el código 2413",
+    "tipo": "codigo_especifico",
+    "fuente": "Manual Operacion",
+    "keywords_contexto": ["2413"],
+    "keywords_respuesta": ["2413"]
+  },
+  {
+    "id": "parametro_cod_ach",
+    "pregunta": "cuál es el parámetro COD_ACH",
+    "tipo": "parametro",
+    "fuente": "Manual Operacion",
+    "pagina": 14,
+    "keywords_contexto": ["COD_ACH", "ACCL"],
+    "keywords_respuesta": ["COD_ACH"]
+  },
+  {
+    "id": "orden_aceptada",
+    "pregunta": "qué significa el código 0000 en abonabilidad",
+    "tipo": "codigo_especifico",
+    "fuente": "Especificacion.Webservices",
+    "keywords_contexto": ["0000", "Orden Aceptada"],
+    "keywords_respuesta": ["0000"]
+  },
+  {
+    "id": "rc02_cargo",
+    "pregunta": "qué indica el código RC02",
+    "tipo": "codigo_especifico",
+    "fuente": "Especificacion.Webservices",
+    "keywords_contexto": ["RC02", "Fondos"],
+    "keywords_respuesta": ["RC02"]
+  },
+  {
+    "id": "guia_certificado",
+    "pregunta": "cómo establecer clave a la llave privada",
+    "tipo": "procedimiento",
+    "fuente": "Guia implementacion",
+    "keywords_contexto": ["llave privada", "clave"],
+    "keywords_respuesta": ["llave privada"]
+  },
+  {
+    "id": "webservice_qr",
+    "pregunta": "qué códigos de respuesta existen para QR domiciliado",
+    "tipo": "general",
+    "fuente": "Especificacion.Webservices",
+    "keywords_contexto": ["CODIGO", "DESCRIPCION"],
+    "keywords_respuesta": ["código"]
+  }
+]

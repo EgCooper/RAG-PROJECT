@@ -7,11 +7,13 @@ from src.retrieval.reranker import cargar_reranker
 from src.llm.llm_factory import crear_cliente, generar_respuesta, info_proveedor
 from src.llm.prompt import SYSTEM_PROMPT, construir_prompt
 from config.settings import RERANK_ENABLED, RERANK_MODEL
+from config.validate_env import validar_env
 
 
 class RAGPipeline:
 
-    def __init__(self):
+    def __init__(self, requiere_llm=True):
+        validar_env(requiere_llm=requiere_llm)
         print(f"Iniciando pipeline RAG... (LLM: {info_proveedor()})")
         self.modelo_embeddings = cargar_modelo()
         self.cliente_weaviate  = conectar()

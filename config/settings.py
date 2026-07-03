@@ -33,6 +33,7 @@ TABLE_QUERY_MAX      = 80
 RERANK_ENABLED       = os.getenv("RERANK_ENABLED", "true").lower() == "true"
 RERANK_MODEL         = os.getenv("RERANK_MODEL", "BAAI/bge-reranker-v2-m3")
 RERANK_CANDIDATES    = int(os.getenv("RERANK_CANDIDATES", "30"))
+DEDUP_ENABLED        = os.getenv("DEDUP_ENABLED", "true").lower() == "true"
 
 # LLM
 TEMPERATURE       = 0.1

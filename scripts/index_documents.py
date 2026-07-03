@@ -6,7 +6,7 @@ from src.rag.pipeline import RAGPipeline
 
 DATA_DIR = "data"
 
-pipeline = RAGPipeline()
+pipeline = RAGPipeline(requiere_llm=False)
 
 pdfs = [f for f in os.listdir(DATA_DIR) if f.lower().endswith(".pdf")]
 

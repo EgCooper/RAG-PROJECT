@@ -1,8 +1,9 @@
-unstructured[pdf]
-langchain-text-splitters
-langchain-huggingface
-sentence-transformers
-weaviate-client
-groq
-openai
-python-dotenv
+# RAG ACH — dependencias principales (versiones fijadas para reproducibilidad)
+unstructured[pdf]==0.16.25
+langchain-text-splitters==0.3.8
+langchain-huggingface==0.1.2
+sentence-transformers==3.4.1
+weaviate-client==4.10.4
+groq==0.18.0
+openai==1.65.4
+python-dotenv==1.0.1

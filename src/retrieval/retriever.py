@@ -10,24 +10,23 @@ from config.settings import (
     TABLE_QUERY_MAX,
     RERANK_ENABLED,
     RERANK_CANDIDATES,
+    DEDUP_ENABLED,
+)
+from config.tables_ach import (
+    TABLA_KEYWORDS_CONSULTA,
+    inferir_tabla_id_consulta,
+    inferir_filtro_fuente,
 )
 from src.retrieval.reranker import rerank_chunks
-
-_TABLA_KEYWORDS = (
-    "codigo", "código", "codigos", "códigos",
-    "excepcion", "excepción", "excepciones",
-    "mensaje", "mensajes", "error_exception",
-    "abonabilidad",
-)
+from src.retrieval.dedup import deduplicar_chunks
 
 _LISTA_TABLA_KEYWORDS = (
     "listar", "lista", "todos", "todas", "completa", "completo",
     "enumera", "cuales son", "cuáles son", "tabla completa", "tabla de",
 )
 
-# Códigos ACH concretos: ERROR_*, 4 dígitos, X99/RA01/EC10/D01, etc.
 _CODIGO_ESPECIFICO = re.compile(
-    r"\b(?:ERROR_\w+|\d{4}|(?:X|RA|EC|D)\d{2})\b",
+    r"\b(?:ERROR_\w+|\d{4}|(?:X|RA|EC|D|RC)\d{2})\b",
     re.I,
 )
 
@@ -45,18 +44,11 @@ def _objeto_a_chunk(obj, score=None):
 
 def _es_consulta_tabla(pregunta):
     p = pregunta.lower()
-    return any(k in p for k in _TABLA_KEYWORDS)
+    return any(k in p for k in TABLA_KEYWORDS_CONSULTA)
 
 
 def _tiene_codigo_especifico(pregunta):
     return _CODIGO_ESPECIFICO.search(pregunta) is not None
-
-
-def _inferir_tabla_id(pregunta):
-    p = pregunta.lower()
-    if "abonabilidad" in p:
-        return "abonabilidad"
-    return "excepciones"
 
 
 def _es_consulta_listar_tabla(pregunta):
@@ -72,12 +64,26 @@ def _es_consulta_listar_tabla(pregunta):
     return False
 
 
-def _buscar_hibrido(collection, pregunta, vector_pregunta, limit):
+def _filtro_fuente(patron):
+    if not patron:
+        return None
+    return Filter.by_property("fuente").like(f"*{patron}*")
+
+
+def _aplicar_dedup(chunks):
+    if not DEDUP_ENABLED:
+        return chunks
+    return deduplicar_chunks(chunks)
+
+
+def _buscar_hibrido(collection, pregunta, vector_pregunta, limit, filtro_fuente=None):
+    filtros = _filtro_fuente(filtro_fuente)
     resultados = collection.query.hybrid(
         query=pregunta,
         vector=vector_pregunta,
         alpha=HYBRID_ALPHA,
         limit=limit,
+        filters=filtros,
         return_metadata=wq.MetadataQuery(score=True),
     )
     return [
@@ -86,14 +92,19 @@ def _buscar_hibrido(collection, pregunta, vector_pregunta, limit):
     ]
 
 
-def _buscar_tabla_completa(collection, tabla_id):
+def _buscar_tabla_completa(collection, tabla_id, filtro_fuente=None):
+    filtros = Filter.by_property("tabla_id").equal(tabla_id)
+    fuente_filtro = _filtro_fuente(filtro_fuente)
+    if fuente_filtro is not None:
+        filtros = filtros & fuente_filtro
+
     resultados = collection.query.fetch_objects(
-        filters=Filter.by_property("tabla_id").equal(tabla_id),
+        filters=filtros,
         limit=TABLE_QUERY_MAX,
     )
     chunks = [_objeto_a_chunk(obj) for obj in resultados.objects]
     chunks.sort(key=lambda c: (c["pagina"], c["texto"][:80]))
-    return chunks
+    return _aplicar_dedup(chunks)
 
 
 def _aplicar_rerank(pregunta, chunks, reranker):
@@ -104,15 +115,20 @@ def _aplicar_rerank(pregunta, chunks, reranker):
 
 def buscar_chunks(client, pregunta, vector_pregunta, reranker=None):
     collection = client.collections.get(WEAVIATE_COLLECTION)
+    filtro_fuente = inferir_filtro_fuente(pregunta)
 
     if _es_consulta_listar_tabla(pregunta):
-        tabla_id = _inferir_tabla_id(pregunta)
-        chunks = _buscar_tabla_completa(collection, tabla_id)
+        tabla_id = inferir_tabla_id_consulta(pregunta)
+        chunks = _buscar_tabla_completa(collection, tabla_id, filtro_fuente)
         if chunks:
             return chunks
-        if tabla_id == "abonabilidad":
-            return _buscar_hibrido(collection, pregunta, vector_pregunta, TABLE_QUERY_MAX)
+        return _buscar_hibrido(
+            collection, pregunta, vector_pregunta, TABLE_QUERY_MAX, filtro_fuente
+        )
 
     limit = RERANK_CANDIDATES if RERANK_ENABLED and reranker else TOP_K_CHUNKS
-    chunks = _buscar_hibrido(collection, pregunta, vector_pregunta, limit)
+    chunks = _buscar_hibrido(
+        collection, pregunta, vector_pregunta, limit, filtro_fuente
+    )
+    chunks = _aplicar_dedup(chunks)
     return _aplicar_rerank(pregunta, chunks, reranker)

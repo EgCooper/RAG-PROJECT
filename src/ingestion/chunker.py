@@ -1,4 +1,3 @@
-import re
 from collections import defaultdict
 
 from langchain_text_splitters import RecursiveCharacterTextSplitter
@@ -9,24 +8,7 @@ from config.settings import (
     MIN_CHUNK_CHARS,
     TABLE_CHUNK_SIZE,
 )
-
-
-def _detectar_tabla_id(texto):
-    """Etiqueta tablas reconocibles para recuperarlas completas."""
-    if texto.count("ERROR_EXCEPTION") >= 2:
-        return "excepciones"
-    lower = texto.lower()
-    if "códigos y mensajes de excepciones" in lower:
-        return "excepciones"
-    if "codigos y mensajes de excepciones" in lower:
-        return "excepciones"
-    if "abonabilidad" in lower:
-        return "abonabilidad"
-    if ("codigo descripcion" in lower or "código descripción" in lower) and re.search(
-        r"\b(?:RA|X|EC|D)\d{2}\b", texto, re.I
-    ):
-        return "abonabilidad"
-    return ""
+from config.tables_ach import detectar_tabla_id
 
 
 def _merge_tablas_consecutivas(elementos):
@@ -101,7 +83,7 @@ def dividir_chunks(elementos):
     chunks = []
 
     for pagina, texto_tabla in _merge_tablas_consecutivas(elementos):
-        tabla_id = _detectar_tabla_id(texto_tabla)
+        tabla_id = detectar_tabla_id(texto_tabla)
         for parte, pag, tid in _dividir_tabla(texto_tabla, pagina, tabla_id):
             parte = parte.strip()
             if len(parte) >= MIN_CHUNK_CHARS:
@@ -130,7 +112,7 @@ def dividir_chunks(elementos):
                 "texto": parte,
                 "tipo": "pagina",
                 "pagina": pagina,
-                "tabla_id": _detectar_tabla_id(parte),
+                "tabla_id": detectar_tabla_id(parte),
             })
 
     return chunks
