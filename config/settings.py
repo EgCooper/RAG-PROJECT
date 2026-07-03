@@ -30,10 +30,10 @@ WEAVIATE_COLLECTION = "Documento"
 TOP_K_CHUNKS         = 12
 HYBRID_ALPHA         = 0.3
 TABLE_QUERY_MAX      = 80
-RERANK_ENABLED       = os.getenv("RERANK_ENABLED", "true").lower() == "true"
+RERANK_ENABLED       = False
 RERANK_MODEL         = os.getenv("RERANK_MODEL", "BAAI/bge-reranker-v2-m3")
 RERANK_CANDIDATES    = int(os.getenv("RERANK_CANDIDATES", "30"))
-DEDUP_ENABLED        = os.getenv("DEDUP_ENABLED", "true").lower() == "true"
+DEDUP_ENABLED        = False
 
 # LLM
 TEMPERATURE       = 0.1
@@ -41,3 +41,6 @@ MAX_TOKENS        = 4000
 TOP_P             = 0.9
 FREQUENCY_PENALTY = 0.1
 PRESENCE_PENALTY  = 0.1
+
+# Chat
+CHAT_HISTORY_MAX  = int(os.getenv("CHAT_HISTORY_MAX", "6"))

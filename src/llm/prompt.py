@@ -17,19 +17,29 @@ SYSTEM_PROMPT = (
     "6. Si el contexto NO contiene ninguna información relevante para la pregunta, "
     f"responde únicamente: '{_NO_INFO_RESPONSE}'\n"
     "7. Si respondes con información del contexto, termina con [nombre-archivo.pdf, p.N]. "
-    "Usa solo el nombre del archivo, sin rutas."
+    "Usa solo el nombre del archivo, sin rutas.\n"
+    "8. Si hay HISTORIAL de conversación, úsalo solo para entender referencias "
+    "(ej. 'y el RA02', 'ese código'). La respuesta debe basarse en el CONTEXTO actual."
 )
 
-def construir_prompt(pregunta, chunks):
+def construir_prompt(pregunta, chunks, historial_texto=None):
     contexto = "\n\n".join([
         f"Fuente: {os.path.basename(c['fuente'])}, p.{c['pagina']}\n{c['texto']}"
         for c in chunks
     ])
 
+    bloque_historial = ""
+    if historial_texto:
+        bloque_historial = f"""
+[HISTORIAL]
+{historial_texto}
+[FIN HISTORIAL]
+"""
+
     return f"""
 [CONTEXTO]
 {contexto}
 [FIN CONTEXTO]
-
+{bloque_historial}
 Pregunta: {pregunta}
 """

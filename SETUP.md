@@ -71,6 +71,11 @@ Reindexar el mismo PDF **reemplaza** chunks previos (no duplica).
 python scripts/query.py
 ```
 
+Comandos en el chat: `limpiar` (nueva conversación), `salir`.
+
+El historial mantiene los últimos turnos para preguntas de seguimiento (*"y el RA02"*, *"explica más"*).
+Variable `CHAT_HISTORY_MAX` en `.env` (default: 6 turnos).
+
 ## 7. Evaluar calidad
 
 ```powershell
