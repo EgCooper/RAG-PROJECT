@@ -19,11 +19,20 @@ class RAGPipeline:
 
     def indexar(self, ruta_pdf):
         print(f"Indexando: {ruta_pdf}")
-        elementos = extraer_pdf(ruta_pdf)
-        chunks    = dividir_chunks(elementos)
-        vectores  = generar_embeddings(chunks, self.modelo_embeddings)
-        almacenar_chunks(self.cliente_weaviate, chunks, vectores, ruta_pdf)
-        print(f"Indexación completa: {len(chunks)} chunks almacenados")
+        etapa = "extraccion"
+        try:
+            elementos = extraer_pdf(ruta_pdf)
+            etapa = "chunking"
+            chunks    = dividir_chunks(elementos)
+            etapa = "embeddings"
+            vectores  = generar_embeddings(chunks, self.modelo_embeddings)
+            etapa = "almacenamiento"
+            almacenar_chunks(self.cliente_weaviate, chunks, vectores, ruta_pdf)
+            print(f"Indexación completa: {len(chunks)} chunks almacenados")
+            return {"ok": True, "fuente": ruta_pdf, "chunks": len(chunks)}
+        except Exception as e:
+            print(f"ERROR en {ruta_pdf} ({etapa}): {e}")
+            return {"ok": False, "fuente": ruta_pdf, "etapa": etapa, "error": str(e)}
 
     def consultar(self, pregunta):
         vector_pregunta = self.modelo_embeddings.embed_query(pregunta)

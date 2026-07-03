@@ -16,10 +16,32 @@ if not pdfs:
 
 print(f"PDFs encontrados: {len(pdfs)}\n")
 
+exitos = []
+fallos = []
+
 for i, pdf in enumerate(pdfs, 1):
     ruta = os.path.join(DATA_DIR, pdf)
     print(f"[{i}/{len(pdfs)}] Procesando: {pdf}")
-    pipeline.indexar(ruta)
+    resultado = pipeline.indexar(ruta)
+    if resultado["ok"]:
+        exitos.append(resultado)
+    else:
+        fallos.append(resultado)
 
-print(f"\nIndexación completa. {len(pdfs)} PDFs procesados.")
+print(f"\n{'=' * 50}")
+print(f"Resumen: {len(exitos)}/{len(pdfs)} indexados correctamente")
+
+if exitos:
+    print("\nExitosos:")
+    for r in exitos:
+        print(f"  - {os.path.basename(r['fuente'])} ({r['chunks']} chunks)")
+
+if fallos:
+    print("\nFallidos:")
+    for r in fallos:
+        print(f"  - {os.path.basename(r['fuente'])} [{r['etapa']}]: {r['error']}")
+
 pipeline.cerrar()
+
+if fallos:
+    sys.exit(1)

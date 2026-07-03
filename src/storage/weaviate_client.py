@@ -1,15 +1,18 @@
-#librearie for connection whit database weaviate
+import os
+
 import weaviate
-# importing variables from settings for determine the host, port and collection 
 from weaviate.classes.config import Configure, Property, DataType
-# importing variables from settings for determine the host, port and collection
+from weaviate.classes.query import Filter
+
 from config.settings import WEAVIATE_HOST, WEAVIATE_PORT, WEAVIATE_COLLECTION
+
 
 def conectar():
     return weaviate.connect_to_local(
         host=WEAVIATE_HOST,
-        port=WEAVIATE_PORT
+        port=WEAVIATE_PORT,
     )
+
 
 def crear_collection(client):
     if not client.collections.exists(WEAVIATE_COLLECTION):
@@ -22,10 +25,42 @@ def crear_collection(client):
                 Property(name="fuente",   data_type=DataType.TEXT),
                 Property(name="pagina",   data_type=DataType.INT),
                 Property(name="tabla_id", data_type=DataType.TEXT),
-            ]
+            ],
         )
 
+
+def normalizar_fuente(ruta):
+    return os.path.normpath(ruta).replace("\\", "/")
+
+
+def _fuentes_equivalentes(ruta):
+    """Claves de fuente usadas en indexaciones previas (p. ej. barras en Windows)."""
+    norm = os.path.normpath(ruta)
+    return {normalizar_fuente(ruta), norm}
+
+
+def eliminar_chunks_por_fuente(client, fuente):
+    if not client.collections.exists(WEAVIATE_COLLECTION):
+        return 0
+
+    collection = client.collections.get(WEAVIATE_COLLECTION)
+    eliminados = 0
+
+    for clave in _fuentes_equivalentes(fuente):
+        result = collection.data.delete_many(
+            where=Filter.by_property("fuente").equal(clave),
+        )
+        eliminados += result.successful
+
+    return eliminados
+
+
 def almacenar_chunks(client, chunks, vectores, fuente):
+    fuente = normalizar_fuente(fuente)
+    previos = eliminar_chunks_por_fuente(client, fuente)
+    if previos:
+        print(f"Reemplazando índice: {previos} chunks previos eliminados de {fuente}")
+
     collection = client.collections.get(WEAVIATE_COLLECTION)
 
     with collection.batch.dynamic() as batch:
@@ -38,7 +73,7 @@ def almacenar_chunks(client, chunks, vectores, fuente):
                     "pagina":   chunk.get("pagina", 0),
                     "tabla_id": chunk.get("tabla_id", ""),
                 },
-                vector=vector
+                vector=vector,
             )
 
     print(f"Almacenados: {len(chunks)} chunks de {fuente}")
