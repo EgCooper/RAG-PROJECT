@@ -1,3 +1,4 @@
+import re
 from collections import defaultdict
 
 from langchain_text_splitters import RecursiveCharacterTextSplitter
@@ -19,6 +20,12 @@ def _detectar_tabla_id(texto):
         return "excepciones"
     if "codigos y mensajes de excepciones" in lower:
         return "excepciones"
+    if "abonabilidad" in lower:
+        return "abonabilidad"
+    if ("codigo descripcion" in lower or "código descripción" in lower) and re.search(
+        r"\b(?:RA|X|EC|D)\d{2}\b", texto, re.I
+    ):
+        return "abonabilidad"
     return ""
 
 

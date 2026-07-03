@@ -14,6 +14,18 @@ _TABLA_KEYWORDS = (
     "codigo", "código", "codigos", "códigos",
     "excepcion", "excepción", "excepciones",
     "mensaje", "mensajes", "error_exception",
+    "abonabilidad",
+)
+
+_LISTA_TABLA_KEYWORDS = (
+    "listar", "lista", "todos", "todas", "completa", "completo",
+    "enumera", "cuales son", "cuáles son", "tabla completa", "tabla de",
+)
+
+# Códigos ACH concretos: ERROR_*, 4 dígitos, X99/RA01/EC10/D01, etc.
+_CODIGO_ESPECIFICO = re.compile(
+    r"\b(?:ERROR_\w+|\d{4}|(?:X|RA|EC|D)\d{2})\b",
+    re.I,
 )
 
 
@@ -33,14 +45,28 @@ def _es_consulta_tabla(pregunta):
     return any(k in p for k in _TABLA_KEYWORDS)
 
 
-def _es_consulta_tabla_completa(pregunta):
+def _tiene_codigo_especifico(pregunta):
+    return _CODIGO_ESPECIFICO.search(pregunta) is not None
+
+
+def _inferir_tabla_id(pregunta):
+    p = pregunta.lower()
+    if "abonabilidad" in p:
+        return "abonabilidad"
+    return "excepciones"
+
+
+def _es_consulta_listar_tabla(pregunta):
     if not _es_consulta_tabla(pregunta):
         return False
-    if re.search(r"\b\d{4}\b", pregunta):
+    if _tiene_codigo_especifico(pregunta):
         return False
-    if re.search(r"ERROR_\w+", pregunta, re.I):
-        return False
-    return True
+    p = pregunta.lower()
+    if any(k in p for k in _LISTA_TABLA_KEYWORDS):
+        return True
+    if "tabla" in p:
+        return True
+    return False
 
 
 def _buscar_hibrido(collection, pregunta, vector_pregunta, limit):
@@ -70,9 +96,12 @@ def _buscar_tabla_completa(collection, tabla_id):
 def buscar_chunks(client, pregunta, vector_pregunta):
     collection = client.collections.get(WEAVIATE_COLLECTION)
 
-    if _es_consulta_tabla_completa(pregunta):
-        chunks = _buscar_tabla_completa(collection, "excepciones")
+    if _es_consulta_listar_tabla(pregunta):
+        tabla_id = _inferir_tabla_id(pregunta)
+        chunks = _buscar_tabla_completa(collection, tabla_id)
         if chunks:
             return chunks
+        if tabla_id == "abonabilidad":
+            return _buscar_hibrido(collection, pregunta, vector_pregunta, TABLE_QUERY_MAX)
 
     return _buscar_hibrido(collection, pregunta, vector_pregunta, TOP_K_CHUNKS)
