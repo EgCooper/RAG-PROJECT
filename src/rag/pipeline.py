@@ -3,8 +3,10 @@ from src.ingestion.chunker import dividir_chunks
 from src.ingestion.embedder import cargar_modelo, generar_embeddings
 from src.storage.weaviate_client import conectar, crear_collection, almacenar_chunks
 from src.retrieval.retriever import buscar_chunks
+from src.retrieval.reranker import cargar_reranker
 from src.llm.llm_factory import crear_cliente, generar_respuesta, info_proveedor
 from src.llm.prompt import SYSTEM_PROMPT, construir_prompt
+from config.settings import RERANK_ENABLED, RERANK_MODEL
 
 
 class RAGPipeline:
@@ -14,7 +16,10 @@ class RAGPipeline:
         self.modelo_embeddings = cargar_modelo()
         self.cliente_weaviate  = conectar()
         self.cliente_llm       = crear_cliente()
+        self.reranker          = None
         crear_collection(self.cliente_weaviate)
+        if RERANK_ENABLED:
+            print(f"Reranker: {RERANK_MODEL} (se carga al consultar)")
         print("Pipeline listo.")
 
     def indexar(self, ruta_pdf):
@@ -35,8 +40,13 @@ class RAGPipeline:
             return {"ok": False, "fuente": ruta_pdf, "etapa": etapa, "error": str(e)}
 
     def consultar(self, pregunta):
+        if RERANK_ENABLED and self.reranker is None:
+            print(f"Cargando reranker: {RERANK_MODEL}...")
+            self.reranker = cargar_reranker()
         vector_pregunta = self.modelo_embeddings.embed_query(pregunta)
-        chunks          = buscar_chunks(self.cliente_weaviate, pregunta, vector_pregunta)
+        chunks          = buscar_chunks(
+            self.cliente_weaviate, pregunta, vector_pregunta, self.reranker
+        )
         prompt          = construir_prompt(pregunta, chunks)
         respuesta       = generar_respuesta(self.cliente_llm, SYSTEM_PROMPT, prompt)
         return respuesta, chunks

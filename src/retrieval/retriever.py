@@ -8,7 +8,10 @@ from config.settings import (
     TOP_K_CHUNKS,
     HYBRID_ALPHA,
     TABLE_QUERY_MAX,
+    RERANK_ENABLED,
+    RERANK_CANDIDATES,
 )
+from src.retrieval.reranker import rerank_chunks
 
 _TABLA_KEYWORDS = (
     "codigo", "código", "codigos", "códigos",
@@ -93,7 +96,13 @@ def _buscar_tabla_completa(collection, tabla_id):
     return chunks
 
 
-def buscar_chunks(client, pregunta, vector_pregunta):
+def _aplicar_rerank(pregunta, chunks, reranker):
+    if not (RERANK_ENABLED and reranker and chunks):
+        return chunks
+    return rerank_chunks(pregunta, chunks, reranker)
+
+
+def buscar_chunks(client, pregunta, vector_pregunta, reranker=None):
     collection = client.collections.get(WEAVIATE_COLLECTION)
 
     if _es_consulta_listar_tabla(pregunta):
@@ -104,4 +113,6 @@ def buscar_chunks(client, pregunta, vector_pregunta):
         if tabla_id == "abonabilidad":
             return _buscar_hibrido(collection, pregunta, vector_pregunta, TABLE_QUERY_MAX)
 
-    return _buscar_hibrido(collection, pregunta, vector_pregunta, TOP_K_CHUNKS)
+    limit = RERANK_CANDIDATES if RERANK_ENABLED and reranker else TOP_K_CHUNKS
+    chunks = _buscar_hibrido(collection, pregunta, vector_pregunta, limit)
+    return _aplicar_rerank(pregunta, chunks, reranker)

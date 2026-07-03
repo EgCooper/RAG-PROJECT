@@ -30,6 +30,9 @@ WEAVIATE_COLLECTION = "Documento"
 TOP_K_CHUNKS         = 12
 HYBRID_ALPHA         = 0.3
 TABLE_QUERY_MAX      = 80
+RERANK_ENABLED       = os.getenv("RERANK_ENABLED", "true").lower() == "true"
+RERANK_MODEL         = os.getenv("RERANK_MODEL", "BAAI/bge-reranker-v2-m3")
+RERANK_CANDIDATES    = int(os.getenv("RERANK_CANDIDATES", "30"))
 
 # LLM
 TEMPERATURE       = 0.1
