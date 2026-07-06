@@ -71,12 +71,30 @@ Reindexar el mismo PDF **reemplaza** chunks previos (no duplica).
 python scripts/query.py
 ```
 
-Comandos en el chat: `limpiar` (nueva conversación), `salir`.
+Cada pregunta es independiente (sin historial de conversación en el servidor).
 
-El historial mantiene los últimos turnos para preguntas de seguimiento (*"y el RA02"*, *"explica más"*).
-Variable `CHAT_HISTORY_MAX` en `.env` (default: 6 turnos).
+## 8. API + Frontend (chat web)
 
-## 7. Evaluar calidad
+**Terminal 1 — API (puerto 8000):**
+
+```powershell
+pip install fastapi uvicorn
+uvicorn src.api.app:app --reload --host 0.0.0.0 --port 8000
+```
+
+**Terminal 2 — Frontend (puerto 5173):**
+
+```powershell
+cd frontend
+npm install
+npm run dev
+```
+
+Abrir http://localhost:5173
+
+Requisitos: Weaviate corriendo, PDFs indexados, `.env` con API key LLM.
+
+## 9. Evaluar calidad
 
 ```powershell
 python scripts/eval_rag.py --solo-retrieval
@@ -113,4 +131,6 @@ src/retrieval/  retriever, reranker, dedup
 src/storage/    Weaviate
 src/llm/        MiniMax / Groq
 config/         settings, tablas ACH, validación env
+src/api/          FastAPI
+frontend/         React (Vite)
 ```

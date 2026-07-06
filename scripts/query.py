@@ -20,7 +20,7 @@ def mostrar_chunks(chunks):
 pipeline = RAGPipeline()
 
 print("\n=== Asistente RAG ===")
-print("Comandos: 'salir' | 'limpiar' (nueva conversación)\n")
+print("Escribe 'salir' para terminar\n")
 
 try:
     while True:
@@ -29,11 +29,6 @@ try:
         if pregunta.lower() == "salir":
             print("Cerrando asistente...")
             break
-
-        if pregunta.lower() in ("limpiar", "nuevo", "reset"):
-            pipeline.limpiar_historial()
-            print("Historial limpiado. Nueva conversación.\n")
-            continue
 
         if not pregunta:
             continue
