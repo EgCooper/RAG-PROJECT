@@ -4,6 +4,11 @@ import re
 
 # Palabras clave de consulta por tabla (listar / routing)
 TABLAS_CONSULTA = {
+    "errores_orden": (
+        "errores_orden", "errores orden",
+        "codigo error orden", "códigos error orden",
+        "codigos error orden", "codigoerrororden",
+    ),
     "excepciones": (
         "excepcion", "excepción", "excepciones",
         "error_exception", "mensaje", "mensajes",
@@ -44,6 +49,9 @@ def detectar_tabla_id(texto):
         return ""
 
     lower = texto.lower()
+
+    if re.search(r"\bERRORES_ORDEN\s+[A-Z0-9]+\b", texto, re.I):
+        return "errores_orden"
 
     if texto.count("ERROR_EXCEPTION") >= 2:
         return "excepciones"

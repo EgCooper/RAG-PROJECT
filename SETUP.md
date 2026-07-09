@@ -26,11 +26,13 @@ pip install -r requirements.txt
 
 **Poppler:** descargar binarios y agregar `bin` al PATH.
 
-**Weaviate:**
+**Weaviate + PostgreSQL:**
 
 ```powershell
 docker compose up -d
 ```
+
+PostgreSQL queda en `localhost:5432` (usuario `rag`, contraseña `rag`, base `rag_ach`).
 
 ## 3. Configuración
 
@@ -46,6 +48,7 @@ Variables opcionales:
 |----------|---------|-------------|
 | `RERANK_ENABLED` | `true` | Reranking cross-encoder |
 | `DEDUP_ENABLED` | `true` | Quitar chunks duplicados |
+| `DATABASE_URL` | ver `.env.example` | PostgreSQL (chats) |
 | `RERANK_CANDIDATES` | `30` | Candidatos antes del rerank |
 
 ## 4. Verificar entorno
@@ -60,10 +63,36 @@ python scripts/health_check.py --skip-llm
 Colocar PDFs en `data/` y ejecutar:
 
 ```powershell
+# Por defecto: solo PDFs nuevos o modificados
 python scripts/index_documents.py
+
+# Solo un PDF recién agregado
+python scripts/index_documents.py --archivo manual_nuevo.pdf
+
+# Reindexar todo (comportamiento anterior)
+python scripts/index_documents.py --todos
+
+# Forzar reindex de un archivo aunque no haya cambiado
+python scripts/index_documents.py --archivo manual.pdf --forzar
 ```
 
-Reindexar el mismo PDF **reemplaza** chunks previos (no duplica).
+El script guarda un registro local en `data/.index_registry.json` (mtime y tamaño por archivo).
+Reindexar el mismo PDF **reemplaza** chunks previos en Weaviate (no duplica).
+
+**Perfiles de indexación** (automático vía `index_router`):
+
+| Perfil | Archivos | Extractor |
+|--------|----------|-----------|
+| `pdf_narrativo` | Manuales, guías | unstructured `fast` |
+| `pdf_tabular` | Códigos en columnas (`CodigoErrorOrdenAch.pdf`) | pdfplumber (1 fila = 1 chunk) |
+| `csv` | Catálogos `.csv` | 1 fila = 1 chunk |
+
+Validar extracción de un PDF antes de indexar:
+
+```powershell
+python scripts/dump_extraction.py data/CodigoErrorOrdenAch.pdf
+python scripts/index_documents.py --archivo CodigoErrorOrdenAch.pdf --forzar
+```
 
 ## 6. Consultar
 
@@ -71,14 +100,28 @@ Reindexar el mismo PDF **reemplaza** chunks previos (no duplica).
 python scripts/query.py
 ```
 
-Cada pregunta es independiente (sin historial de conversación en el servidor).
+Cada pregunta es independiente (sin historial en el prompt RAG).
+
+## 7. PostgreSQL y chats persistentes
+
+La API crea las tablas al arrancar. Opcionalmente:
+
+```powershell
+python scripts/init_db.py
+```
+
+Variables en `.env`:
+
+```env
+DATABASE_URL=postgresql://rag:rag@localhost:5432/rag_ach
+```
 
 ## 8. API + Frontend (chat web)
 
 **Terminal 1 — API (puerto 8000):**
 
 ```powershell
-pip install fastapi uvicorn
+pip install -r requirements.txt
 uvicorn src.api.app:app --reload --host 0.0.0.0 --port 8000
 ```
 
@@ -92,7 +135,9 @@ npm run dev
 
 Abrir http://localhost:5173
 
-Requisitos: Weaviate corriendo, PDFs indexados, `.env` con API key LLM.
+Requisitos: Weaviate + **PostgreSQL** corriendo, PDFs indexados, `.env` con API key LLM y `DATABASE_URL`.
+
+El chat guarda conversaciones en Postgres. El sidebar lista sesiones anteriores y sobreviven al recargar la página.
 
 ## 9. Evaluar calidad
 

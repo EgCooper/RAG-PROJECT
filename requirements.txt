@@ -3,9 +3,16 @@ unstructured[pdf]==0.16.25
 langchain-text-splitters==0.3.8
 langchain-huggingface==0.1.2
 sentence-transformers==3.4.1
+scikit-learn>=1.5.2,<1.8
 weaviate-client==4.10.4
 groq==0.18.0
 openai==1.65.4
 python-dotenv==1.0.1
+python-multipart==0.0.20
 fastapi==0.115.6
 uvicorn[standard]==0.34.0
+pdfplumber==0.11.6
+python-docx==1.1.2
+python-pptx==1.0.2
+sqlalchemy==2.0.36
+psycopg2-binary==2.9.10

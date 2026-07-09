@@ -26,6 +26,19 @@ WEAVIATE_HOST       = "localhost"
 WEAVIATE_PORT       = 8080
 WEAVIATE_COLLECTION = "Documento"
 
+# PostgreSQL
+DATABASE_URL = os.getenv(
+    "DATABASE_URL",
+    "postgresql://rag:rag@localhost:5432/rag_ach",
+)
+DEFAULT_USER_NAME = os.getenv("DEFAULT_USER_NAME", "default")
+
+# Datos / documentos
+DATA_DIR = os.getenv("DATA_DIR", "data")
+UPLOAD_MAX_MB = int(os.getenv("UPLOAD_MAX_MB", "50"))
+ALLOWED_UPLOAD_EXTENSIONS = {".pdf", ".csv", ".docx", ".ppt", ".pptx"}
+UPLOAD_BATCH_MAX_FILES = int(os.getenv("UPLOAD_BATCH_MAX_FILES", "30"))
+
 # Retrieval
 TOP_K_CHUNKS         = 12
 HYBRID_ALPHA         = 0.3

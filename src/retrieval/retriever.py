@@ -26,7 +26,7 @@ _LISTA_TABLA_KEYWORDS = (
 )
 
 _CODIGO_ESPECIFICO = re.compile(
-    r"\b(?:ERROR_\w+|\d{4}|(?:X|RA|EC|D|RC)\d{2})\b",
+    r"\b(?:ERRORES_ORDEN\s+[A-Z0-9]+|ERROR_\w+|\d{4}|(?:X|RA|EC|D|RC)\d{2})\b",
     re.I,
 )
 

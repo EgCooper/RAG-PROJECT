@@ -1,5 +1,4 @@
-from src.ingestion.extractor import extraer_pdf
-from src.ingestion.chunker import dividir_chunks
+from src.ingestion.index_router import construir_chunks
 from src.ingestion.embedder import cargar_modelo, generar_embeddings
 from src.storage.weaviate_client import conectar, crear_collection, almacenar_chunks
 from src.retrieval.retriever import buscar_chunks
@@ -24,22 +23,30 @@ class RAGPipeline:
             print(f"Reranker: {RERANK_MODEL} (se carga al consultar)")
         print("Pipeline listo.")
 
-    def indexar(self, ruta_pdf):
-        print(f"Indexando: {ruta_pdf}")
+    def indexar(self, ruta_archivo):
+        print(f"Indexando: {ruta_archivo}")
         etapa = "extraccion"
         try:
-            elementos = extraer_pdf(ruta_pdf)
-            etapa = "chunking"
-            chunks    = dividir_chunks(elementos)
+            chunks, info = construir_chunks(ruta_archivo)
+            perfil = info["perfil"]
+            print(f"Perfil: {perfil} | chunks: {len(chunks)}")
+            if info["validacion"].get("advertencias"):
+                for adv in info["validacion"]["advertencias"]:
+                    print(f"  Advertencia: {adv}")
             etapa = "embeddings"
             vectores  = generar_embeddings(chunks, self.modelo_embeddings)
             etapa = "almacenamiento"
-            almacenar_chunks(self.cliente_weaviate, chunks, vectores, ruta_pdf)
+            almacenar_chunks(self.cliente_weaviate, chunks, vectores, ruta_archivo)
             print(f"Indexación completa: {len(chunks)} chunks almacenados")
-            return {"ok": True, "fuente": ruta_pdf, "chunks": len(chunks)}
+            return {
+                "ok": True,
+                "fuente": ruta_archivo,
+                "chunks": len(chunks),
+                "perfil": perfil,
+            }
         except Exception as e:
-            print(f"ERROR en {ruta_pdf} ({etapa}): {e}")
-            return {"ok": False, "fuente": ruta_pdf, "etapa": etapa, "error": str(e)}
+            print(f"ERROR en {ruta_archivo} ({etapa}): {e}")
+            return {"ok": False, "fuente": ruta_archivo, "etapa": etapa, "error": str(e)}
 
     def consultar(self, pregunta):
         if RERANK_ENABLED and self.reranker is None:

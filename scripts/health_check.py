@@ -45,9 +45,20 @@ def verificar_weaviate():
         return _fail(f"Weaviate no disponible: {e}")
 
 
+def verificar_postgres():
+    try:
+        from src.db.engine import verificar_conexion
+        verificar_conexion()
+        _ok("PostgreSQL conectado")
+        return None
+    except Exception as e:
+        return _fail(f"PostgreSQL no disponible: {e}")
+
+
 def main():
     parser = argparse.ArgumentParser(description="Health check del asistente RAG")
     parser.add_argument("--skip-llm", action="store_true", help="No validar API keys LLM")
+    parser.add_argument("--skip-postgres", action="store_true", help="No validar PostgreSQL")
     args = parser.parse_args()
 
     print("=== Health check RAG ===\n")
@@ -69,6 +80,12 @@ def main():
     w = verificar_weaviate()
     if w:
         fallos.append(w)
+
+    p = None
+    if not args.skip_postgres:
+        p = verificar_postgres()
+        if p:
+            fallos.append(p)
 
     print()
     if fallos:

@@ -1,6 +1,7 @@
 import os
 
 import weaviate
+from weaviate.classes.aggregate import GroupByAggregate
 from weaviate.classes.config import Configure, Property, DataType
 from weaviate.classes.query import Filter
 
@@ -37,6 +38,23 @@ def _fuentes_equivalentes(ruta):
     """Claves de fuente usadas en indexaciones previas (p. ej. barras en Windows)."""
     norm = os.path.normpath(ruta)
     return {normalizar_fuente(ruta), norm}
+
+
+def listar_fuentes_indexadas(client):
+    if not client.collections.exists(WEAVIATE_COLLECTION):
+        return set()
+
+    collection = client.collections.get(WEAVIATE_COLLECTION)
+    resultado = collection.aggregate.over_all(
+        group_by=GroupByAggregate(prop="fuente"),
+    )
+
+    fuentes = set()
+    for grupo in resultado.groups or []:
+        valor = grupo.grouped_by.value
+        if valor:
+            fuentes.add(normalizar_fuente(valor))
+    return fuentes
 
 
 def eliminar_chunks_por_fuente(client, fuente):

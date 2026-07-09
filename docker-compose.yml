@@ -1,8 +1,8 @@
 version: '3.8'
-  
+
 services:
   weaviate:
-    image: cr.weaviate.io/semitechnologies/weaviate:latest
+    image: cr.weaviate.io/semitechnologies/weaviate:1.27.0
     ports:
       - "8080:8080"
       - "50051:50051"
@@ -13,7 +13,22 @@ services:
       AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED: "true"
       PERSISTENCE_DATA_PATH: "/var/lib/weaviate"
       DEFAULT_VECTORIZER_MODULE: "none"
+      CLUSTER_HOSTNAME: "node1"
+      RAFT_BOOTSTRAP_EXPECT: 1
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:16-alpine
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: rag
+      POSTGRES_PASSWORD: rag
+      POSTGRES_DB: rag_ach
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
     restart: unless-stopped
   
 volumes:
   weaviate_data:
+  postgres_data:
