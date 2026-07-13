@@ -2,11 +2,14 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import {
   enviarPregunta,
   crearSesion,
+  eliminarSesion,
+  eliminarTodasSesiones,
   listarSesiones,
   obtenerSesion,
 } from "./api";
 import Sidebar from "./components/Sidebar";
 import ChatMessage from "./components/ChatMessage";
+import ConfirmDialog from "./components/ConfirmDialog";
 import DocumentsView from "./components/DocumentsView";
 import TypingIndicator from "./components/TypingIndicator";
 import { IconChevronLeft, IconMenu, IconPlus, IconSend } from "./components/Icons";
@@ -40,6 +43,10 @@ export default function App() {
   const [sidebarAbierto, setSidebarAbierto] = useState(false);
   const [sidebarOculto, setSidebarOculto] = useState(leerSidebarOculto);
   const [vista, setVista] = useState("chat");
+  const [sesionAEliminar, setSesionAEliminar] = useState(null);
+  const [confirmarEliminarTodas, setConfirmarEliminarTodas] = useState(false);
+  const [eliminandoSesionId, setEliminandoSesionId] = useState(null);
+  const [eliminandoTodasSesiones, setEliminandoTodasSesiones] = useState(false);
   const [esDesktop, setEsDesktop] = useState(
     () => window.matchMedia("(min-width: 900px)").matches
   );
@@ -102,6 +109,7 @@ export default function App() {
   }
 
   const sidebarVisible = esDesktop ? !sidebarOculto : sidebarAbierto;
+  const chatLimpio = mensajes.length === 0 && sessionId !== null;
 
   const abrirSesion = useCallback(
     async (id) => {
@@ -157,6 +165,11 @@ export default function App() {
   );
 
   async function handleNueva() {
+    if (chatLimpio) {
+      inputRef.current?.focus();
+      return;
+    }
+
     try {
       const data = await crearSesion();
       setSessionId(data.id);
@@ -167,6 +180,47 @@ export default function App() {
       inputRef.current?.focus();
     } catch (err) {
       setError(err.message);
+    }
+  }
+
+  function solicitarEliminarSesion(sesion) {
+    setSesionAEliminar(sesion);
+  }
+
+  async function confirmarEliminarSesion() {
+    const sesion = sesionAEliminar;
+    if (!sesion) return;
+
+    setEliminandoSesionId(sesion.id);
+    setError("");
+    try {
+      await eliminarSesion(sesion.id);
+      if (sessionId === sesion.id) {
+        setSessionId(null);
+        setMensajes([]);
+      }
+      setSesionAEliminar(null);
+      await recargarSesiones();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setEliminandoSesionId(null);
+    }
+  }
+
+  async function confirmarEliminarTodasSesiones() {
+    setEliminandoTodasSesiones(true);
+    setError("");
+    try {
+      await eliminarTodasSesiones();
+      setSessionId(null);
+      setMensajes([]);
+      setConfirmarEliminarTodas(false);
+      await recargarSesiones();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setEliminandoTodasSesiones(false);
     }
   }
 
@@ -184,10 +238,15 @@ export default function App() {
         onOcultar={ocultarSidebar}
         onNueva={handleNueva}
         onSeleccionar={abrirSesion}
+        onSolicitarEliminar={solicitarEliminarSesion}
+        onSolicitarEliminarTodas={() => setConfirmarEliminarTodas(true)}
         sesiones={sesiones}
         sessionIdActiva={sessionId}
         cargandoSesiones={cargandoSesiones}
         deshabilitado={cargando}
+        nuevaDeshabilitada={chatLimpio}
+        eliminandoSesionId={eliminandoSesionId}
+        eliminandoTodasSesiones={eliminandoTodasSesiones}
         vista={vista}
         onCambiarVista={(v) => {
           setVista(v);
@@ -219,7 +278,8 @@ export default function App() {
               type="button"
               className="btn-ghost topbar-new"
               onClick={handleNueva}
-              disabled={cargando}
+              disabled={cargando || chatLimpio}
+              title={chatLimpio ? "Ya tenés una conversación vacía abierta" : "Nueva conversación"}
             >
               <IconPlus />
               <span>Nueva</span>
@@ -291,6 +351,32 @@ export default function App() {
           </>
         )}
       </div>
+
+      <ConfirmDialog
+        open={!!sesionAEliminar}
+        title="Eliminar conversación"
+        detail={sesionAEliminar?.titulo}
+        message="Se borrarán todos los mensajes de este chat. Esta acción no se puede deshacer."
+        confirmLabel="Eliminar"
+        cancelLabel="Cancelar"
+        variant="danger"
+        loading={eliminandoSesionId !== null}
+        onConfirm={confirmarEliminarSesion}
+        onCancel={() => !eliminandoSesionId && setSesionAEliminar(null)}
+      />
+
+      <ConfirmDialog
+        open={confirmarEliminarTodas}
+        title="Eliminar todas las conversaciones"
+        detail={`${sesiones.length} conversación${sesiones.length === 1 ? "" : "es"}`}
+        message="Se borrarán todos los chats y sus mensajes. Esta acción no se puede deshacer."
+        confirmLabel="Eliminar todas"
+        cancelLabel="Cancelar"
+        variant="danger"
+        loading={eliminandoTodasSesiones}
+        onConfirm={confirmarEliminarTodasSesiones}
+        onCancel={() => !eliminandoTodasSesiones && setConfirmarEliminarTodas(false)}
+      />
     </div>
   );
 }

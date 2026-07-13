@@ -7,6 +7,7 @@ from src.ingestion.chunker import dividir_chunks
 from src.ingestion.csv_extractor import extraer_csv
 from src.ingestion.docx_extractor import extraer_docx
 from src.ingestion.extractor import extraer_pdf
+from src.ingestion.md_extractor import extraer_md
 from src.ingestion.pdf_tabular import extraer_pdf_tabular
 from src.ingestion.pptx_extractor import extraer_presentacion
 from src.ingestion.validate_index import validar_chunks
@@ -15,6 +16,7 @@ _FORMATOS = {
     ".pdf": "pdf",
     ".csv": "csv",
     ".docx": "docx",
+    ".md": "md",
     ".ppt": "ppt",
     ".pptx": "pptx",
 }
@@ -52,6 +54,9 @@ def construir_chunks(ruta, validar=True):
         chunks = dividir_chunks(elementos)
     elif perfil == "docx":
         elementos = extraer_docx(ruta)
+        chunks = dividir_chunks(elementos)
+    elif perfil == "md":
+        elementos = extraer_md(ruta)
         chunks = dividir_chunks(elementos)
     elif perfil == "csv":
         chunks = extraer_csv(ruta)

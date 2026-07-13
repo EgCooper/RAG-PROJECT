@@ -1,102 +1,383 @@
 [
   {
-    "id": "x99_codigo",
-    "pregunta": "qué indica el código X99",
+    "id": "resp_0000",
+    "pregunta": "qué significa el código 0000 en la respuesta de una orden",
     "tipo": "codigo_especifico",
+    "regla": "3-una-oracion",
     "fuente": "Especificacion.Webservices",
-    "pagina": 15,
-    "keywords_contexto": ["X99", "recepción"],
-    "keywords_respuesta": ["X99", "recepción"]
+    "pagina": 36,
+    "respuesta_esperada": "0000 indica que la orden fue aceptada.",
+    "keywords_contexto": ["0000", "Orden Aceptada"],
+    "keywords_respuesta": ["0000", "aceptada"]
   },
   {
-    "id": "x99_error",
-    "pregunta": "qué indica el error X99",
-    "tipo": "codigo_especifico",
-    "fuente": "Especificacion.Webservices",
-    "pagina": 15,
-    "keywords_contexto": ["X99"],
-    "keywords_respuesta": ["X99"]
-  },
-  {
-    "id": "ra01_codigo",
+    "id": "resp_ra01",
     "pregunta": "qué indica el código RA01",
     "tipo": "codigo_especifico",
+    "regla": "3-una-oracion",
     "fuente": "Especificacion.Webservices",
-    "pagina": 14,
+    "pagina": 36,
+    "respuesta_esperada": "RA01 indica que la cuenta no existe (Pago).",
     "keywords_contexto": ["RA01", "Cuenta no existe"],
     "keywords_respuesta": ["RA01"]
   },
   {
-    "id": "lista_abonabilidad",
-    "pregunta": "lista todos los códigos de abonabilidad",
-    "tipo": "lista_tabla",
+    "id": "resp_ra05",
+    "pregunta": "qué significa el código RA05",
+    "tipo": "codigo_especifico",
+    "regla": "3-una-oracion",
     "fuente": "Especificacion.Webservices",
-    "keywords_contexto": ["0000", "RA01", "RA02"],
-    "keywords_respuesta": ["0000", "RA01"]
+    "pagina": 36,
+    "respuesta_esperada": "RA05 indica que el estado de la cuenta es inválido.",
+    "keywords_contexto": ["RA05", "Estado de la cuenta"],
+    "keywords_respuesta": ["RA05"]
   },
   {
-    "id": "lista_excepciones",
-    "pregunta": "lista todos los códigos de excepción",
-    "tipo": "lista_tabla",
-    "fuente": "Manual Operacion",
-    "keywords_contexto": ["ERROR_EXCEPTION", "ERROR_"],
-    "keywords_respuesta": ["ERROR_"]
-  },
-  {
-    "id": "error_qrsimple_get",
-    "pregunta": "qué significa ERROR_QRSIMPLE_GET",
+    "id": "resp_rc02",
+    "pregunta": "qué indica el código RC02",
     "tipo": "codigo_especifico",
-    "fuente": "Manual Operacion",
-    "keywords_contexto": ["ERROR_QRSIMPLE_GET", "2413"],
-    "keywords_respuesta": ["ERROR_QRSIMPLE_GET"]
+    "regla": "3-una-oracion",
+    "fuente": "Especificacion.Webservices",
+    "pagina": 36,
+    "respuesta_esperada": "RC02 indica cuenta sin fondos en un cargo.",
+    "keywords_contexto": ["RC02", "Fondos"],
+    "keywords_respuesta": ["RC02", "fondos"]
   },
   {
-    "id": "codigo_2413",
-    "pregunta": "qué indica el código 2413",
+    "id": "resp_x99",
+    "pregunta": "qué indica el código X99",
     "tipo": "codigo_especifico",
-    "fuente": "Manual Operacion",
-    "keywords_contexto": ["2413"],
+    "regla": "3-una-oracion",
+    "fuente": "Especificacion.Webservices",
+    "pagina": 36,
+    "respuesta_esperada": "X99 indica error en la recepción de la respuesta (código de ACH Express).",
+    "keywords_contexto": ["X99", "recepción"],
+    "keywords_respuesta": ["X99", "recepción"]
+  },
+  {
+    "id": "resp_t98",
+    "pregunta": "qué significa el código T98",
+    "tipo": "codigo_especifico",
+    "regla": "3-una-oracion",
+    "fuente": "Especificacion.Webservices",
+    "pagina": 31,
+    "respuesta_esperada": "T98 indica que la orden no fue completada y debe mantenerse la pignoración del monto.",
+    "keywords_contexto": ["T98", "pignoracion"],
+    "keywords_respuesta": ["T98"]
+  },
+  {
+    "id": "err_511",
+    "pregunta": "qué indica el código de error 511",
+    "tipo": "codigo_especifico",
+    "regla": "3-una-oracion",
+    "fuente": "Especificacion.Webservices",
+    "pagina": 31,
+    "respuesta_esperada": "511 indica que la orden ya existe y fue procesada.",
+    "keywords_contexto": ["511", "ya existe"],
+    "keywords_respuesta": ["511"]
+  },
+  {
+    "id": "err_2413",
+    "pregunta": "qué significa el código 2413",
+    "tipo": "codigo_especifico",
+    "regla": "3-una-oracion",
+    "fuente": "Especificacion.Webservices",
+    "pagina": 33,
+    "respuesta_esperada": "2413 indica error al obtener la orden simple.",
+    "keywords_contexto": ["2413", "orden simple"],
     "keywords_respuesta": ["2413"]
   },
   {
-    "id": "parametro_cod_ach",
-    "pregunta": "cuál es el parámetro COD_ACH",
-    "tipo": "parametro",
+    "id": "err_mld_ec02",
+    "pregunta": "qué indica el código EC02 de MLD",
+    "tipo": "codigo_especifico",
+    "regla": "3-una-oracion",
+    "fuente": "Especificacion.Webservices",
+    "pagina": 38,
+    "respuesta_esperada": "EC02 indica que el participante no existe (código propio de MLD).",
+    "keywords_contexto": ["EC02", "Participante no existe"],
+    "keywords_respuesta": ["EC02"]
+  },
+  {
+    "id": "err_accl_o01",
+    "pregunta": "qué significa el código O01 de ACCL",
+    "tipo": "codigo_especifico",
+    "regla": "3-una-oracion",
+    "fuente": "Especificacion.Webservices",
+    "pagina": 37,
+    "respuesta_esperada": "O01 indica que la firma del originante no es válida (código propio de ACCL).",
+    "keywords_contexto": ["O01", "Firma de originante"],
+    "keywords_respuesta": ["O01"]
+  },
+  {
+    "id": "participante_1035",
+    "pregunta": "qué entidad corresponde al participante 1035",
+    "tipo": "codigo_especifico",
+    "regla": "3-una-oracion",
+    "fuente": "Especificacion.Webservices",
+    "pagina": 39,
+    "respuesta_esperada": "El participante 1035 corresponde a BANCO FASSIL.",
+    "keywords_contexto": ["1035", "FASSIL"],
+    "keywords_respuesta": ["1035", "FASSIL"]
+  },
+  {
+    "id": "err_qrsimple_get",
+    "pregunta": "qué significa ERROR_QRSIMPLE_GET",
+    "tipo": "codigo_especifico",
+    "regla": "3-una-oracion",
     "fuente": "Manual Operacion",
-    "pagina": 14,
-    "keywords_contexto": ["COD_ACH", "ACCL"],
-    "keywords_respuesta": ["COD_ACH"]
+    "respuesta_esperada": "ERROR_QRSIMPLE_GET corresponde al código 2413.",
+    "keywords_contexto": ["ERROR_QRSIMPLE_GET", "2413"],
+    "keywords_respuesta": ["2413"]
   },
+
   {
-    "id": "orden_aceptada",
-    "pregunta": "qué significa el código 0000 en abonabilidad",
-    "tipo": "codigo_especifico",
+    "id": "lista_ra",
+    "pregunta": "lista todos los códigos de abonabilidad de pago (RA)",
+    "tipo": "lista_tabla",
+    "regla": "3-lista-texto-plano",
     "fuente": "Especificacion.Webservices",
-    "keywords_contexto": ["0000", "Orden Aceptada"],
-    "keywords_respuesta": ["0000"]
+    "pagina": 36,
+    "respuesta_esperada": "RA01 a RA09: RA01 Cuenta no existe (Pago); RA02 Error tipo de cuenta; RA03 Error tipo de moneda; RA04 Error en el titular de cuenta; RA05 Estado de la cuenta inválido; RA06 Pago excede el monto adeudado; RA07 Amortización extraordinaria no permitida o excede límites; RA08 Problema interno, intente de nuevo; RA09 El pago de préstamos y tarjetas no está habilitado para este ciclo.",
+    "keywords_contexto": ["RA01", "RA05", "RA09"],
+    "keywords_respuesta": ["RA01", "RA05", "RA09"]
   },
   {
-    "id": "rc02_cargo",
-    "pregunta": "qué indica el código RC02",
-    "tipo": "codigo_especifico",
+    "id": "lista_rc",
+    "pregunta": "lista todos los códigos de cargo (RC)",
+    "tipo": "lista_tabla",
+    "regla": "3-lista-texto-plano",
     "fuente": "Especificacion.Webservices",
-    "keywords_contexto": ["RC02", "Fondos"],
-    "keywords_respuesta": ["RC02"]
+    "pagina": 37,
+    "respuesta_esperada": "RC01 a RC10, desde RC01 Cuenta no existe (Cargo) hasta RC10 Nro de cuotas ya cumplido.",
+    "keywords_contexto": ["RC01", "RC02", "RC10"],
+    "keywords_respuesta": ["RC01", "RC10"]
   },
   {
-    "id": "guia_certificado",
+    "id": "lista_x_express",
+    "pregunta": "lista los códigos X de ACH Express",
+    "tipo": "lista_tabla",
+    "regla": "3-lista-texto-plano",
+    "fuente": "Especificacion.Webservices",
+    "pagina": 37,
+    "respuesta_esperada": "X01 a X09 y X96 a X99, todos marcados como exclusivos de ACH Express.",
+    "keywords_contexto": ["X01", "X96", "X99"],
+    "keywords_respuesta": ["X01", "X99"]
+  },
+  {
+    "id": "lista_estados_orden",
+    "pregunta": "cuáles son los estados posibles de una orden",
+    "tipo": "lista_tabla",
+    "regla": "3-lista-texto-plano",
+    "fuente": "Manual Operacion",
+    "pagina": 20,
+    "respuesta_esperada": "ACEP Aceptado; CANCEL Cancelado; RECH Rechazado; RECI Recibido; TRAN Tránsito; ERROR Error.",
+    "keywords_contexto": ["ESTADO_ORDEN", "ACEP", "TRAN"],
+    "keywords_respuesta": ["ACEP", "RECH", "TRAN"]
+  },
+  {
+    "id": "lista_excepciones",
+    "pregunta": "lista los códigos de excepción del sistema",
+    "tipo": "lista_tabla",
+    "regla": "3-lista-texto-plano",
+    "fuente": "Manual Operacion",
+    "pagina": 21,
+    "respuesta_esperada": "Lista de dominios ERROR_EXCEPTION con su código, por ejemplo ERROR_CLEARING_HOUSE_GET 2023, ERROR_CLEARING_HOUSE_PERSIST 2020, etc.",
+    "keywords_contexto": ["ERROR_EXCEPTION", "2023", "2020"],
+    "keywords_respuesta": ["ERROR_"]
+  },
+
+  {
+    "id": "proc_instalar_wildfly",
+    "pregunta": "cómo se instala Wildfly",
+    "tipo": "procedimiento",
+    "regla": "2-pasos-numerados",
+    "fuente": "Guia implementacion",
+    "pagina": 9,
+    "respuesta_esperada": "Descomprimir el archivo wildfly*.zip en una carpeta del disco del servidor: en Windows en C:/ y en Linux en /opt/. Ese directorio se referencia como $WILDFLY_HOME.",
+    "keywords_contexto": ["Wildfly", "descomprimir", "WILDFLY_HOME"],
+    "keywords_respuesta": ["descomprimir", "opt", "C:"]
+  },
+  {
+    "id": "proc_agregar_certificado",
+    "pregunta": "cómo agregar un certificado de confianza en Wildfly",
+    "tipo": "procedimiento",
+    "regla": "2-pasos-numerados",
+    "fuente": "Guia implementacion",
+    "pagina": 21,
+    "respuesta_esperada": "Tener el certificado, obtener ruta y clave del truststore desde config_tesabiz_ach.properties, agregarlo con Portecle o con keytool -import, y reiniciar Wildfly.",
+    "keywords_contexto": ["certificado", "truststore", "keytool"],
+    "keywords_respuesta": ["keytool", "reiniciar"]
+  },
+  {
+    "id": "proc_clave_llave_privada",
     "pregunta": "cómo establecer clave a la llave privada",
     "tipo": "procedimiento",
+    "regla": "2-pasos-numerados",
     "fuente": "Guia implementacion",
-    "keywords_contexto": ["llave privada", "clave"],
-    "keywords_respuesta": ["llave privada"]
+    "pagina": 41,
+    "respuesta_esperada": "Unificar llave privada y certificado, crear un almacén nuevo con Portecle, importar el par de llaves, establecer la clave nueva y exportar el par en formato PEM.",
+    "keywords_contexto": ["llave privada", "Portecle", "clave"],
+    "keywords_respuesta": ["llave privada", "clave"]
   },
   {
-    "id": "webservice_qr",
-    "pregunta": "qué códigos de respuesta existen para QR domiciliado",
+    "id": "proc_usuario_consola_wildfly",
+    "pregunta": "cómo crear un usuario para la consola administrativa de Wildfly",
+    "tipo": "procedimiento",
+    "regla": "2-pasos-numerados",
+    "fuente": "Guia implementacion",
+    "pagina": 17,
+    "respuesta_esperada": "Ejecutar add-user.sh (Linux) o add-user.bat (Windows) en {wildflydir}/bin, elegir la opción (a) Management User, ingresar nombre y contraseña y finalizar.",
+    "keywords_contexto": ["add-user", "Management User"],
+    "keywords_respuesta": ["add-user", "Management"]
+  },
+
+  {
+    "id": "param_puertos_firewall",
+    "pregunta": "qué puertos hay que habilitar en el firewall del servidor de aplicaciones",
+    "tipo": "parametro",
+    "regla": "4-no-inventar-cifras",
+    "fuente": "Guia implementacion",
+    "pagina": 7,
+    "respuesta_esperada": "Los puertos 8080, 8443, 9990 y 9993.",
+    "keywords_contexto": ["8080", "8443", "9990", "9993"],
+    "keywords_respuesta": ["8080", "8443", "9990", "9993"]
+  },
+  {
+    "id": "param_java_version",
+    "pregunta": "qué versión de Java se requiere para el servidor de aplicaciones",
+    "tipo": "parametro",
+    "regla": "4-no-inventar-cifras",
+    "fuente": "Guia implementacion",
+    "pagina": 6,
+    "respuesta_esperada": "Java v.1.8-202 o superior (se puede usar hasta jdk-8u281).",
+    "keywords_contexto": ["Java", "1.8-202"],
+    "keywords_respuesta": ["1.8", "202"]
+  },
+  {
+    "id": "param_cod_ach",
+    "pregunta": "cuál es el valor del parámetro COD_ACH",
+    "tipo": "parametro",
+    "regla": "4-no-inventar-cifras",
+    "fuente": "Manual Operacion",
+    "pagina": 16,
+    "respuesta_esperada": "COD_ACH tiene el valor ACCL y corresponde al código de la cámara ACH.",
+    "keywords_contexto": ["COD_ACH", "ACCL"],
+    "keywords_respuesta": ["COD_ACH", "ACCL"]
+  },
+  {
+    "id": "param_timeout_ws_ach",
+    "pregunta": "cuál es el timeout de conexión y de ejecución del webservice WS_ACH",
+    "tipo": "parametro",
+    "regla": "4-no-inventar-cifras",
+    "fuente": "Manual Operacion",
+    "pagina": 12,
+    "respuesta_esperada": "WS_ACH tiene timeout de conexión de 3 segundos y timeout de ejecución de 30 segundos.",
+    "keywords_contexto": ["WS_ACH", "3 segs", "30 segs"],
+    "keywords_respuesta": ["WS_ACH", "3", "30"]
+  },
+  {
+    "id": "job_1a",
+    "pregunta": "qué hace el Job1A y con qué frecuencia se ejecuta",
+    "tipo": "parametro",
+    "regla": "4-no-inventar-cifras",
+    "fuente": "Manual Operacion",
+    "pagina": 11,
+    "respuesta_esperada": "Job1A envía los mensajes 1A a la ACCL, se ejecuta cada 20 segundos con 3 hilos.",
+    "keywords_contexto": ["Job1A", "1A", "ACCL", "20"],
+    "keywords_respuesta": ["Job1A", "ACCL", "20"]
+  },
+
+  {
+    "id": "flujo_debito_4a",
+    "pregunta": "qué debe hacer el Core cuando recibe un 4A con código distinto de 0000",
     "tipo": "general",
+    "regla": "1-solo-contexto",
     "fuente": "Especificacion.Webservices",
-    "keywords_contexto": ["CODIGO", "DESCRIPCION"],
-    "keywords_respuesta": ["código"]
+    "pagina": 5,
+    "respuesta_esperada": "Si el código de respuesta no es exitoso (distinto de 0000), el Core debe liberar o revertir el monto pignorado.",
+    "keywords_contexto": ["4A", "0000", "pignorado"],
+    "keywords_respuesta": ["libera", "pignorado"]
+  },
+  {
+    "id": "cron_cada_10s",
+    "pregunta": "cómo se configura la frecuencia de un job para que se ejecute cada 10 segundos",
+    "tipo": "general",
+    "regla": "1-solo-contexto",
+    "fuente": "Manual Operacion",
+    "pagina": 11,
+    "respuesta_esperada": "Con la expresión de 6 campos '0/10 * * * * ?' (segundos 0,10,20,30,40,50).",
+    "keywords_contexto": ["0/10", "segundos"],
+    "keywords_respuesta": ["0/10"]
+  },
+
+  {
+    "id": "contradiccion_oracle",
+    "pregunta": "qué versión de Oracle se requiere como motor de base de datos",
+    "tipo": "contradiccion",
+    "regla": "5-no-mezclar / 8-parcial",
+    "fuente": "Guia implementacion / Especificacion.Webservices",
+    "pagina": 7,
+    "respuesta_esperada": "Los documentos no coinciden: la Guía de implementación indica Oracle 19c o superior, mientras que la Especificación de Webservices indica Oracle 12c o superior. Conviene aclarar la discrepancia.",
+    "keywords_contexto": ["Oracle", "19c", "12c"],
+    "keywords_respuesta": ["Oracle", "19c", "12c"],
+    "nota": "Caso de contexto contradictorio: dos fuentes dan distinto valor. Prueba si el modelo detecta y reporta la discrepancia en vez de inventar una sola."
+  },
+  {
+    "id": "ambiguo_0000_mld",
+    "pregunta": "qué significa el código 0000",
+    "tipo": "ambiguo",
+    "regla": "5-no-mezclar",
+    "fuente": "Especificacion.Webservices",
+    "pagina": 36,
+    "respuesta_esperada": "0000 indica Orden Aceptada (respuesta Cliente ACH); en los códigos propios de MLD 0000 significa Operación Correcta.",
+    "keywords_contexto": ["0000", "Aceptada", "Operación Correcta"],
+    "keywords_respuesta": ["0000"],
+    "nota": "Mismo código con dos significados según la fuente. Prueba si el modelo separa contextos sin mezclarlos."
+  },
+
+  {
+    "id": "fuera_dominio_total",
+    "pregunta": "cuál es la capital de Francia",
+    "tipo": "fuera_contexto",
+    "regla": "6-sin-info",
+    "fuente": null,
+    "respuesta_esperada": "No encontré información sobre esto en los documentos disponibles.",
+    "keywords_contexto": [],
+    "keywords_respuesta": ["No encontré información"],
+    "nota": "Pregunta totalmente fuera de dominio. Debe devolver el mensaje fijo, NO responder 'París'."
+  },
+  {
+    "id": "fuera_dominio_kafka",
+    "pregunta": "cómo configuro Apache Kafka en el sistema Cliente ACH",
+    "tipo": "fuera_contexto",
+    "regla": "6-sin-info",
+    "fuente": null,
+    "respuesta_esperada": "No encontré información sobre esto en los documentos disponibles.",
+    "keywords_contexto": [],
+    "keywords_respuesta": ["No encontré información"],
+    "nota": "Suena del dominio pero no existe en los docs. Prueba alucinación por plausibilidad."
+  },
+  {
+    "id": "fuera_codigo_inexistente",
+    "pregunta": "qué indica el código ZZ99",
+    "tipo": "fuera_contexto",
+    "regla": "6-sin-info",
+    "fuente": null,
+    "respuesta_esperada": "No encontré información sobre esto en los documentos disponibles.",
+    "keywords_contexto": [],
+    "keywords_respuesta": ["No encontré información"],
+    "nota": "Código inexistente con formato válido. Debe negar, no inventar un significado."
+  },
+  {
+    "id": "fuera_precio_licencia",
+    "pregunta": "cuál es el precio de la licencia del sistema Cliente ACH",
+    "tipo": "fuera_contexto",
+    "regla": "6-sin-info",
+    "fuente": null,
+    "respuesta_esperada": "No encontré información sobre esto en los documentos disponibles.",
+    "keywords_contexto": [],
+    "keywords_respuesta": ["No encontré información"],
+    "nota": "Dato comercial que no está en la documentación técnica."
   }
 ]

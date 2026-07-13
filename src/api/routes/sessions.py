@@ -22,6 +22,15 @@ def crear_sesion(db: Session = Depends(get_db), user: User = Depends(get_default
     return sesion
 
 
+@router.delete("")
+def eliminar_todas_sesiones(
+    db: Session = Depends(get_db),
+    user: User = Depends(get_default_user),
+):
+    eliminados = repository.eliminar_todas_sesiones(db, user.id)
+    return {"ok": True, "eliminados": eliminados}
+
+
 @router.get("/{session_id}", response_model=SessionDetail)
 def obtener_sesion(
     session_id: uuid.UUID,

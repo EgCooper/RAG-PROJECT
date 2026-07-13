@@ -4,22 +4,27 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from src.api.deps import get_db, get_default_user, get_pipeline
+from src.db import documents_repository as doc_repo
 from src.db import repository
 from src.db.models import User
 from src.db.schemas import ChatRequest, ChatResponse
 from src.rag.pipeline import RAGPipeline
+from src.rag.errors import IndiceVectorialError
 
 router = APIRouter(prefix="/api", tags=["chat"])
 
 
-def _serializar_chunks(chunks):
-    return [
-        {
-            "fuente": os.path.basename(c.get("fuente", "")),
+def _serializar_chunks(chunks, nombres_fuentes=None):
+    nombres_fuentes = nombres_fuentes or {}
+    resultado = []
+    for c in chunks:
+        fuente = c.get("fuente", "")
+        visible = nombres_fuentes.get(fuente) or os.path.basename(fuente)
+        resultado.append({
+            "fuente": visible,
             "pagina": c.get("pagina", 0),
-        }
-        for c in chunks
-    ]
+        })
+    return resultado
 
 
 @router.post("/chat", response_model=ChatResponse)
@@ -37,10 +42,15 @@ def chat(
 
     try:
         respuesta, chunks = pipeline.consultar(pregunta)
+    except IndiceVectorialError as e:
+        raise HTTPException(503, str(e)) from e
     except Exception as e:
-        raise HTTPException(500, f"Error al consultar: {e}") from e
+        raise HTTPException(500, "Error inesperado al consultar. Intentá de nuevo.") from e
 
-    chunks_api = _serializar_chunks(chunks)
+    nombres = doc_repo.nombres_por_fuentes(
+        db, user.id, [c.get("fuente", "") for c in chunks]
+    )
+    chunks_api = _serializar_chunks(chunks, nombres)
     repository.agregar_mensaje(db, sesion.id, "assistant", respuesta, chunks_api)
     repository.actualizar_sesion_tras_mensaje(
         db,

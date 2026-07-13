@@ -60,6 +60,9 @@ weaviate_data/
 # Documentos locales (PDFs sensibles o pesados)
 data/*.pdf
 
+# Uploads pendientes de indexación
+uploads/
+
 # Frontend
 frontend/node_modules/
 frontend/dist/

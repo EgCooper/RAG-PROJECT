@@ -1,10 +1,18 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { eliminarDocumento, listarDocumentos, subirDocumento } from "../api";
+import {
+  eliminarDocumento,
+  eliminarTodosDocumentos,
+  listarDocumentos,
+  obtenerConfigUpload,
+  obtenerEstadisticasIndice,
+  subirDocumento,
+} from "../api";
 import ConfirmDialog from "./ConfirmDialog";
 import { IconDoc, IconTrash, IconUpload } from "./Icons";
 
-const EXTENSIONES = [".pdf", ".csv", ".docx", ".ppt", ".pptx"];
-const MAX_ARCHIVOS = 30;
+const EXTENSIONES = [".pdf", ".csv", ".docx", ".md", ".ppt", ".pptx"];
+const MAX_ARCHIVOS_DEFAULT = 100;
+const POLL_MS = 2500;
 
 function extensionDe(nombre) {
   const i = nombre.lastIndexOf(".");
@@ -42,7 +50,8 @@ function etiquetaEstado(estado) {
 function etiquetaCola(estado) {
   const map = {
     pendiente: "En cola",
-    indexando: "Indexando…",
+    subiendo: "Subiendo…",
+    subido: "En cola de indexación",
     ok: "Listo",
     error: "Error",
     omitido: "Omitido",
@@ -50,16 +59,41 @@ function etiquetaCola(estado) {
   return map[estado] || estado;
 }
 
+function hayIndexacionActiva(lista) {
+  return lista.some((d) => d.estado === "pendiente" || d.estado === "indexando");
+}
+
+function ordenPendientes(a, b) {
+  const peso = { indexando: 0, pendiente: 1 };
+  const pa = peso[a.estado] ?? 2;
+  const pb = peso[b.estado] ?? 2;
+  if (pa !== pb) return pa - pb;
+  return new Date(a.creado_en) - new Date(b.creado_en);
+}
+
 export default function DocumentsView() {
   const [documentos, setDocumentos] = useState([]);
   const [cargando, setCargando] = useState(true);
-  const [procesandoLote, setProcesandoLote] = useState(false);
+  const [subiendoArchivos, setSubiendoArchivos] = useState(false);
   const [colaSubida, setColaSubida] = useState([]);
   const [eliminandoId, setEliminandoId] = useState(null);
   const [docAEliminar, setDocAEliminar] = useState(null);
+  const [confirmarEliminarTodos, setConfirmarEliminarTodos] = useState(false);
+  const [eliminandoTodos, setEliminandoTodos] = useState(false);
   const [error, setError] = useState("");
   const [mensaje, setMensaje] = useState("");
+  const [indexStats, setIndexStats] = useState(null);
+  const [maxArchivos, setMaxArchivos] = useState(MAX_ARCHIVOS_DEFAULT);
   const inputRef = useRef(null);
+
+  const recargarStats = useCallback(async () => {
+    try {
+      const stats = await obtenerEstadisticasIndice();
+      setIndexStats(stats);
+    } catch {
+      setIndexStats(null);
+    }
+  }, []);
 
   const recargar = useCallback(async () => {
     setCargando(true);
@@ -67,16 +101,45 @@ export default function DocumentsView() {
     try {
       const lista = await listarDocumentos();
       setDocumentos(lista);
+      await recargarStats();
     } catch (err) {
       setError(err.message);
     } finally {
       setCargando(false);
     }
-  }, []);
+  }, [recargarStats]);
+
+  const recargarSilencioso = useCallback(async () => {
+    try {
+      const lista = await listarDocumentos();
+      setDocumentos(lista);
+      await recargarStats();
+    } catch {
+      // Polling silencioso: no pisar errores visibles del usuario
+    }
+  }, [recargarStats]);
 
   useEffect(() => {
     recargar();
   }, [recargar]);
+
+  useEffect(() => {
+    obtenerConfigUpload()
+      .then((cfg) => setMaxArchivos(cfg.uploadBatchMaxFiles))
+      .catch(() => setMaxArchivos(MAX_ARCHIVOS_DEFAULT));
+  }, []);
+
+  const indexacionActiva = hayIndexacionActiva(documentos);
+  const pendientes = documentos
+    .filter((d) => d.estado === "pendiente" || d.estado === "indexando")
+    .sort(ordenPendientes);
+  const ocupado = subiendoArchivos || eliminandoId !== null || eliminandoTodos;
+
+  useEffect(() => {
+    if (!indexacionActiva) return undefined;
+    const id = setInterval(recargarSilencioso, POLL_MS);
+    return () => clearInterval(id);
+  }, [indexacionActiva, recargarSilencioso]);
 
   function actualizarItemCola(nombre, cambios) {
     setColaSubida((prev) =>
@@ -87,13 +150,13 @@ export default function DocumentsView() {
   async function handleSubir(e) {
     const archivos = Array.from(e.target.files || []);
     e.target.value = "";
-    if (!archivos.length || procesandoLote) return;
+    if (!archivos.length || subiendoArchivos) return;
 
     setError("");
     setMensaje("");
 
-    if (archivos.length > MAX_ARCHIVOS) {
-      setError(`Máximo ${MAX_ARCHIVOS} archivos por lote. Seleccionaste ${archivos.length}.`);
+    if (archivos.length > maxArchivos) {
+      setError(`Máximo ${maxArchivos} archivos por lote. Seleccionaste ${archivos.length}.`);
       return;
     }
 
@@ -110,38 +173,50 @@ export default function DocumentsView() {
 
     const validos = cola.filter((item) => item.estado === "pendiente");
     if (!validos.length) {
-      setError("Ningún archivo válido. Usá PDF, CSV, DOCX o PPT/PPTX.");
+      setError("Ningún archivo válido. Usá PDF, CSV, DOCX, Markdown o PPT/PPTX.");
       setColaSubida(cola);
       return;
     }
 
     setColaSubida(cola);
-    setProcesandoLote(true);
+    setSubiendoArchivos(true);
 
-    let ok = 0;
-    let fail = 0;
+    validos.forEach((item) => {
+      actualizarItemCola(item.nombre, { estado: "subiendo", mensaje: "" });
+    });
 
-    for (const item of validos) {
-      actualizarItemCola(item.nombre, { estado: "indexando", mensaje: "" });
-      try {
-        const data = await subirDocumento(item.archivo);
-        ok += 1;
-        actualizarItemCola(item.nombre, { estado: "ok", mensaje: data.mensaje });
-      } catch (err) {
-        fail += 1;
-        actualizarItemCola(item.nombre, { estado: "error", mensaje: err.message });
-      }
-    }
+    const resultados = await Promise.allSettled(
+      validos.map(async (item) => {
+        try {
+          const data = await subirDocumento(item.archivo);
+          actualizarItemCola(item.nombre, {
+            estado: "subido",
+            mensaje: data.mensaje,
+          });
+          return { ok: true };
+        } catch (err) {
+          actualizarItemCola(item.nombre, { estado: "error", mensaje: err.message });
+          return { ok: false };
+        }
+      })
+    );
 
-    await recargar();
-    setProcesandoLote(false);
+    await recargarSilencioso();
+    setSubiendoArchivos(false);
 
+    const ok = resultados.filter((r) => r.status === "fulfilled" && r.value.ok).length;
+    const fail = validos.length - ok;
     const omitidos = cola.length - validos.length;
+
     const partes = [];
-    if (ok) partes.push(`${ok} indexado${ok > 1 ? "s" : ""}`);
-    if (fail) partes.push(`${fail} con error`);
+    if (ok) partes.push(`${ok} en cola de indexación`);
+    if (fail) partes.push(`${fail} con error al subir`);
     if (omitidos) partes.push(`${omitidos} omitido${omitidos > 1 ? "s" : ""}`);
-    setMensaje(partes.length ? partes.join(", ") : "Lote procesado");
+    setMensaje(
+      partes.length
+        ? `${partes.join(", ")}. El progreso se actualiza automáticamente.`
+        : "Lote procesado"
+    );
   }
 
   function solicitarEliminar(doc) {
@@ -159,7 +234,7 @@ export default function DocumentsView() {
       await eliminarDocumento(doc.id);
       setMensaje(`"${doc.nombre}" eliminado`);
       setDocAEliminar(null);
-      await recargar();
+      await recargarSilencioso();
     } catch (err) {
       setError(err.message);
     } finally {
@@ -167,7 +242,26 @@ export default function DocumentsView() {
     }
   }
 
-  const ocupado = procesandoLote || eliminandoId !== null;
+  async function ejecutarEliminarTodos() {
+    setEliminandoTodos(true);
+    setError("");
+    setMensaje("");
+    try {
+      const data = await eliminarTodosDocumentos();
+      setConfirmarEliminarTodos(false);
+      setColaSubida([]);
+      setMensaje(
+        data.eliminados
+          ? `${data.eliminados} documento${data.eliminados === 1 ? "" : "s"} eliminado${data.eliminados === 1 ? "" : "s"}`
+          : "No había documentos para eliminar"
+      );
+      await recargarSilencioso();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setEliminandoTodos(false);
+    }
+  }
 
   return (
     <div className="documents-view">
@@ -175,14 +269,37 @@ export default function DocumentsView() {
         <div>
           <h2>Documentos del índice</h2>
           <p className="documents-sub">
-            PDFs, CSV, DOCX y presentaciones (PPT/PPTX) que el asistente usa para responder. Podés subir varios archivos a la vez.
+            PDFs, CSV, DOCX, Markdown y presentaciones (PPT/PPTX) que el asistente usa para responder. Podés subir varios archivos a la vez.
           </p>
+          {indexStats && (
+            <div className="documents-index-stats" role="status">
+              <span>
+                Índice Weaviate:{" "}
+                <strong>{indexStats.total_chunks.toLocaleString()}</strong> chunk
+                {indexStats.total_chunks === 1 ? "" : "s"}
+                {indexStats.fuentes > 0 && (
+                  <> · {indexStats.fuentes} fuente{indexStats.fuentes === 1 ? "" : "s"}</>
+                )}
+              </span>
+              {indexStats.total_chunks === 0 && (
+                <span className="index-stats-badge index-stats-badge--ok">Vacío</span>
+              )}
+              {indexStats.huerfanos_chunks > 0 && (
+                <span
+                  className="index-stats-badge index-stats-badge--warn"
+                  title={indexStats.huerfanos.map((h) => `${h.fuente} (${h.chunks})`).join("\n")}
+                >
+                  {indexStats.huerfanos_chunks} huérfano{indexStats.huerfanos_chunks === 1 ? "" : "s"}
+                </span>
+              )}
+            </div>
+          )}
         </div>
         <div className="documents-actions">
           <input
             ref={inputRef}
             type="file"
-            accept=".pdf,.csv,.docx,.ppt,.pptx"
+            accept=".pdf,.csv,.docx,.md,.ppt,.pptx"
             multiple
             className="documents-file-input"
             onChange={handleSubir}
@@ -196,16 +313,47 @@ export default function DocumentsView() {
             disabled={ocupado}
           >
             <IconUpload />
-            {procesandoLote ? "Procesando lote…" : "Subir archivos"}
+            {subiendoArchivos ? "Subiendo…" : "Subir archivos"}
           </button>
         </div>
       </div>
 
+      {pendientes.length > 0 && (
+        <div className="documents-pending" aria-live="polite">
+          <div className="documents-pending-header">
+            <strong>Pendientes de indexación ({pendientes.length})</strong>
+            <span className="documents-pending-hint">
+              El proceso continúa en el servidor aunque cambies de vista o actualices la página.
+            </span>
+          </div>
+          <ul className="documents-pending-list">
+            {pendientes.map((doc) => (
+              <li key={doc.id} className={`documents-pending-item documents-pending-item--${doc.estado}`}>
+                <IconDoc />
+                <span className="documents-pending-name" title={doc.nombre}>
+                  {doc.nombre}
+                </span>
+                <span className="documents-pending-meta">{formatearTamano(doc.tamano_bytes)}</span>
+                <span className={`doc-badge doc-badge--${doc.estado}`}>
+                  {etiquetaEstado(doc.estado)}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {indexacionActiva && !subiendoArchivos && pendientes.length === 0 && (
+        <div className="alert alert--info" role="status">
+          Indexación en curso. Podés cambiar de vista o actualizar la página; el proceso continúa en el servidor.
+        </div>
+      )}
+
       {colaSubida.length > 0 && (
         <div className="upload-queue" aria-live="polite">
           <div className="upload-queue-header">
-            <strong>Cola de subida</strong>
-            {!procesandoLote && (
+            <strong>Última subida</strong>
+            {!subiendoArchivos && (
               <button
                 type="button"
                 className="btn-ghost-sm"
@@ -252,7 +400,7 @@ export default function DocumentsView() {
         <div className="documents-empty-card">
           <IconDoc />
           <p>No hay documentos indexados.</p>
-          <p className="documents-sub">Subí PDFs, CSV, DOCX o PPT/PPTX para empezar.</p>
+          <p className="documents-sub">Subí PDFs, CSV, DOCX, Markdown o PPT/PPTX para empezar.</p>
         </div>
       ) : (
         <div className="documents-table-wrap">
@@ -292,7 +440,9 @@ export default function DocumentsView() {
                       type="button"
                       className="btn-icon btn-danger-ghost"
                       onClick={() => solicitarEliminar(doc)}
-                      disabled={ocupado || doc.estado === "indexando"}
+                      disabled={
+                        ocupado || doc.estado === "indexando" || doc.estado === "pendiente"
+                      }
                       aria-label={`Eliminar ${doc.nombre}`}
                     >
                       <IconTrash />
@@ -302,6 +452,20 @@ export default function DocumentsView() {
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {!cargando && documentos.length > 0 && (
+        <div className="documents-footer-actions">
+          <button
+            type="button"
+            className="btn-danger-outline"
+            onClick={() => setConfirmarEliminarTodos(true)}
+            disabled={ocupado}
+          >
+            <IconTrash />
+            Eliminar todos
+          </button>
         </div>
       )}
 
@@ -316,6 +480,19 @@ export default function DocumentsView() {
         loading={eliminandoId !== null}
         onConfirm={confirmarEliminar}
         onCancel={() => !eliminandoId && setDocAEliminar(null)}
+      />
+
+      <ConfirmDialog
+        open={confirmarEliminarTodos}
+        title="Eliminar todos los documentos"
+        detail={`${documentos.length} documento${documentos.length === 1 ? "" : "s"}`}
+        message="Se borrarán todos los archivos del índice vectorial y del catálogo, incluidos los que estén en cola o indexándose. Esta acción no se puede deshacer."
+        confirmLabel="Eliminar todos"
+        cancelLabel="Cancelar"
+        variant="danger"
+        loading={eliminandoTodos}
+        onConfirm={ejecutarEliminarTodos}
+        onCancel={() => !eliminandoTodos && setConfirmarEliminarTodos(false)}
       />
     </div>
   );

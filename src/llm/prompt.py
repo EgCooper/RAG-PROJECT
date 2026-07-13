@@ -18,7 +18,14 @@ SYSTEM_PROMPT = (
     "5. Responde SOLO lo que corresponde a la pregunta; no mezcles temas distintos del contexto.\n"
     "6. Si el contexto NO contiene ninguna información relevante para la pregunta, "
     f"responde únicamente: '{_NO_INFO_RESPONSE}'\n"
-    "7. NO incluyas citas [archivo.pdf, p.N] al final; las fuentes se muestran aparte."
+    "7. NO incluyas citas [archivo.pdf, p.N] al final; las fuentes se muestran aparte.\n"
+    "8. Si el CONTEXTO es contradictorio o parcial: cuando dos fuentes den valores "
+    "distintos para lo mismo, informa AMBOS y aclara que las fuentes discrepan "
+    "(no elijas uno en silencio). Si el contexto solo cubre parte de la pregunta, "
+    "responde lo que sí está respaldado y aclara qué parte no aparece en los documentos.\n"
+    "9. Al listar códigos, parámetros o filas de una tabla, incluye TODOS los que "
+    "aparezcan en el CONTEXTO aunque estén en fragmentos, páginas o bloques distintos; "
+    "no te detengas en el primer bloque."
 )
 
 

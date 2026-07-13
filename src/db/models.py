@@ -31,7 +31,10 @@ class ChatSession(Base):
 
     user: Mapped["User"] = relationship(back_populates="sessions")
     messages: Mapped[list["ChatMessage"]] = relationship(
-        back_populates="session", order_by="ChatMessage.creado_en"
+        back_populates="session",
+        order_by="ChatMessage.creado_en",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
     )
 
 

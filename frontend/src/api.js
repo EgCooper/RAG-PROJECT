@@ -32,6 +32,12 @@ export async function eliminarSesion(sessionId) {
   return res.json();
 }
 
+export async function eliminarTodasSesiones() {
+  const res = await fetch(`${API}/sessions`, { method: "DELETE" });
+  if (!res.ok) throw new Error(await parseError(res));
+  return res.json();
+}
+
 export async function enviarPregunta(pregunta, sessionId) {
   const body = { pregunta };
   if (sessionId) body.session_id = sessionId;
@@ -45,8 +51,24 @@ export async function enviarPregunta(pregunta, sessionId) {
   return res.json();
 }
 
+export async function obtenerConfigUpload() {
+  const res = await fetch(`${API}/health`);
+  if (!res.ok) throw new Error(await parseError(res));
+  const data = await res.json();
+  return {
+    uploadMaxMb: data.upload_max_mb ?? 50,
+    uploadBatchMaxFiles: data.upload_batch_max_files ?? 100,
+  };
+}
+
 export async function listarDocumentos() {
   const res = await fetch(`${API}/documents`);
+  if (!res.ok) throw new Error(await parseError(res));
+  return res.json();
+}
+
+export async function obtenerEstadisticasIndice() {
+  const res = await fetch(`${API}/documents/index-stats`);
   if (!res.ok) throw new Error(await parseError(res));
   return res.json();
 }
@@ -65,6 +87,12 @@ export async function subirDocumento(archivo) {
 
 export async function eliminarDocumento(documentId) {
   const res = await fetch(`${API}/documents/${documentId}`, { method: "DELETE" });
+  if (!res.ok) throw new Error(await parseError(res));
+  return res.json();
+}
+
+export async function eliminarTodosDocumentos() {
+  const res = await fetch(`${API}/documents`, { method: "DELETE" });
   if (!res.ok) throw new Error(await parseError(res));
   return res.json();
 }

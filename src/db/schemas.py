@@ -69,3 +69,17 @@ class DocumentOut(BaseModel):
 class DocumentUploadResponse(BaseModel):
     documento: DocumentOut
     mensaje: str
+
+
+class FuenteIndexada(BaseModel):
+    fuente: str
+    chunks: int
+
+
+class IndexStatsOut(BaseModel):
+    coleccion_existe: bool
+    total_chunks: int
+    fuentes: int
+    chunks_en_catalogo: int
+    huerfanos_chunks: int
+    huerfanos: list[FuenteIndexada]

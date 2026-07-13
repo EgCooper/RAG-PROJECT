@@ -33,14 +33,14 @@ DATABASE_URL = os.getenv(
 )
 DEFAULT_USER_NAME = os.getenv("DEFAULT_USER_NAME", "default")
 
-# Datos / documentos
-DATA_DIR = os.getenv("DATA_DIR", "data")
+
 UPLOAD_MAX_MB = int(os.getenv("UPLOAD_MAX_MB", "50"))
-ALLOWED_UPLOAD_EXTENSIONS = {".pdf", ".csv", ".docx", ".ppt", ".pptx"}
-UPLOAD_BATCH_MAX_FILES = int(os.getenv("UPLOAD_BATCH_MAX_FILES", "30"))
+PENDING_UPLOAD_DIR = os.getenv("PENDING_UPLOAD_DIR", "uploads/pending")
+ALLOWED_UPLOAD_EXTENSIONS = {".pdf", ".csv", ".docx", ".md", ".ppt", ".pptx"}
+UPLOAD_BATCH_MAX_FILES = int(os.getenv("UPLOAD_BATCH_MAX_FILES", "100"))
 
 # Retrieval
-TOP_K_CHUNKS         = 12
+TOP_K_CHUNKS         = 16
 HYBRID_ALPHA         = 0.3
 TABLE_QUERY_MAX      = 80
 RERANK_ENABLED       = os.getenv("RERANK_ENABLED", "false").lower() == "true"

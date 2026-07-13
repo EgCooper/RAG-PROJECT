@@ -7,6 +7,7 @@ from src.llm.llm_factory import crear_cliente, generar_respuesta, info_proveedor
 from src.llm.prompt import SYSTEM_PROMPT, construir_prompt
 from config.settings import RERANK_ENABLED, RERANK_MODEL
 from config.validate_env import validar_env
+from src.rag.errors import MENSAJE_INDICE_VACIO
 
 
 class RAGPipeline:
@@ -23,8 +24,9 @@ class RAGPipeline:
             print(f"Reranker: {RERANK_MODEL} (se carga al consultar)")
         print("Pipeline listo.")
 
-    def indexar(self, ruta_archivo):
-        print(f"Indexando: {ruta_archivo}")
+    def indexar(self, ruta_archivo, fuente=None):
+        clave_fuente = fuente or ruta_archivo
+        print(f"Indexando: {ruta_archivo} → {clave_fuente}")
         etapa = "extraccion"
         try:
             chunks, info = construir_chunks(ruta_archivo)
@@ -36,17 +38,17 @@ class RAGPipeline:
             etapa = "embeddings"
             vectores  = generar_embeddings(chunks, self.modelo_embeddings)
             etapa = "almacenamiento"
-            almacenar_chunks(self.cliente_weaviate, chunks, vectores, ruta_archivo)
+            almacenar_chunks(self.cliente_weaviate, chunks, vectores, clave_fuente)
             print(f"Indexación completa: {len(chunks)} chunks almacenados")
             return {
                 "ok": True,
-                "fuente": ruta_archivo,
+                "fuente": clave_fuente,
                 "chunks": len(chunks),
                 "perfil": perfil,
             }
         except Exception as e:
             print(f"ERROR en {ruta_archivo} ({etapa}): {e}")
-            return {"ok": False, "fuente": ruta_archivo, "etapa": etapa, "error": str(e)}
+            return {"ok": False, "fuente": clave_fuente, "etapa": etapa, "error": str(e)}
 
     def consultar(self, pregunta):
         if RERANK_ENABLED and self.reranker is None:
@@ -57,6 +59,9 @@ class RAGPipeline:
         chunks          = buscar_chunks(
             self.cliente_weaviate, pregunta, vector_pregunta, self.reranker
         )
+        if not chunks:
+            return MENSAJE_INDICE_VACIO, []
+
         prompt          = construir_prompt(pregunta, chunks)
         respuesta       = generar_respuesta(self.cliente_llm, SYSTEM_PROMPT, prompt)
         return respuesta, chunks

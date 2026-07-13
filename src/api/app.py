@@ -3,10 +3,12 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from config.settings import UPLOAD_BATCH_MAX_FILES, UPLOAD_MAX_MB
 from src.api.deps import set_pipeline
 from src.api.routes import chat, documents, sessions
 from src.db.bootstrap import inicializar_db
 from src.db.engine import verificar_conexion
+from src.ingestion.index_queue import obtener_cola_indexacion, recuperar_trabajos_pendientes
 from src.llm.llm_factory import info_proveedor
 from src.rag.pipeline import RAGPipeline
 
@@ -16,7 +18,10 @@ async def lifespan(app: FastAPI):
     inicializar_db()
     pipeline = RAGPipeline()
     set_pipeline(pipeline)
+    obtener_cola_indexacion()
+    recuperar_trabajos_pendientes()
     yield
+    obtener_cola_indexacion().detener()
     if pipeline:
         pipeline.cerrar()
 
@@ -48,4 +53,6 @@ def health():
         "status": "ok" if db_status == "ok" else "degraded",
         "llm": info_proveedor(),
         "postgres": db_status,
+        "upload_max_mb": UPLOAD_MAX_MB,
+        "upload_batch_max_files": UPLOAD_BATCH_MAX_FILES,
     }

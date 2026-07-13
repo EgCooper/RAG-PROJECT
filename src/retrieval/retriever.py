@@ -19,6 +19,8 @@ from config.tables_ach import (
 )
 from src.retrieval.reranker import rerank_chunks
 from src.retrieval.dedup import deduplicar_chunks
+from src.storage.weaviate_client import crear_collection
+from src.rag.errors import traducir_error_weaviate
 
 _LISTA_TABLA_KEYWORDS = (
     "listar", "lista", "todos", "todas", "completa", "completo",
@@ -114,21 +116,30 @@ def _aplicar_rerank(pregunta, chunks, reranker):
 
 
 def buscar_chunks(client, pregunta, vector_pregunta, reranker=None):
-    collection = client.collections.get(WEAVIATE_COLLECTION)
+    try:
+        crear_collection(client)
+        collection = client.collections.get(WEAVIATE_COLLECTION)
+    except Exception as e:
+        raise traducir_error_weaviate(e) from e
+
     filtro_fuente = inferir_filtro_fuente(pregunta)
 
-    if _es_consulta_listar_tabla(pregunta):
-        tabla_id = inferir_tabla_id_consulta(pregunta)
-        chunks = _buscar_tabla_completa(collection, tabla_id, filtro_fuente)
-        if chunks:
-            return chunks
-        return _buscar_hibrido(
-            collection, pregunta, vector_pregunta, TABLE_QUERY_MAX, filtro_fuente
-        )
+    try:
+        if _es_consulta_listar_tabla(pregunta):
+            tabla_id = inferir_tabla_id_consulta(pregunta)
+            if tabla_id:
+                chunks = _buscar_tabla_completa(collection, tabla_id, filtro_fuente)
+                if chunks:
+                    return chunks
+            return _buscar_hibrido(
+                collection, pregunta, vector_pregunta, TABLE_QUERY_MAX, filtro_fuente
+            )
 
-    limit = RERANK_CANDIDATES if RERANK_ENABLED and reranker else TOP_K_CHUNKS
-    chunks = _buscar_hibrido(
-        collection, pregunta, vector_pregunta, limit, filtro_fuente
-    )
-    chunks = _aplicar_dedup(chunks)
-    return _aplicar_rerank(pregunta, chunks, reranker)
+        limit = RERANK_CANDIDATES if RERANK_ENABLED and reranker else TOP_K_CHUNKS
+        chunks = _buscar_hibrido(
+            collection, pregunta, vector_pregunta, limit, filtro_fuente
+        )
+        chunks = _aplicar_dedup(chunks)
+        return _aplicar_rerank(pregunta, chunks, reranker)
+    except Exception as e:
+        raise traducir_error_weaviate(e) from e

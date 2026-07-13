@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime, timezone
 
 from sqlalchemy import select
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.orm import Session, joinedload, selectinload
 
 from config.settings import DEFAULT_USER_NAME
 from src.db.models import ChatMessage, ChatSession, User
@@ -60,13 +60,27 @@ def obtener_sesion(db: Session, session_id: uuid.UUID, user_id: uuid.UUID) -> Ch
 
 def eliminar_sesion(db: Session, session_id: uuid.UUID, user_id: uuid.UUID) -> bool:
     sesion = db.scalar(
-        select(ChatSession).where(ChatSession.id == session_id, ChatSession.user_id == user_id)
+        select(ChatSession)
+        .options(joinedload(ChatSession.messages))
+        .where(ChatSession.id == session_id, ChatSession.user_id == user_id)
     )
     if not sesion:
         return False
     db.delete(sesion)
     db.commit()
     return True
+
+
+def eliminar_todas_sesiones(db: Session, user_id: uuid.UUID) -> int:
+    sesiones = db.scalars(
+        select(ChatSession)
+        .options(selectinload(ChatSession.messages))
+        .where(ChatSession.user_id == user_id)
+    ).all()
+    for sesion in sesiones:
+        db.delete(sesion)
+    db.commit()
+    return len(sesiones)
 
 
 def agregar_mensaje(

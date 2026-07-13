@@ -48,7 +48,7 @@ def listar_pdfs(archivo=None):
     return sorted(
         os.path.join(DATA_DIR, f)
         for f in os.listdir(DATA_DIR)
-        if f.lower().endswith((".pdf", ".csv", ".docx", ".ppt", ".pptx"))
+        if f.lower().endswith((".pdf", ".csv", ".docx", ".md", ".ppt", ".pptx"))
     )
 
 
@@ -58,7 +58,7 @@ def resolver_archivo(archivo):
         candidatos.append(os.path.join(DATA_DIR, archivo))
 
     for ruta in candidatos:
-        if os.path.isfile(ruta) and ruta.lower().endswith((".pdf", ".csv", ".docx", ".ppt", ".pptx")):
+        if os.path.isfile(ruta) and ruta.lower().endswith((".pdf", ".csv", ".docx", ".md", ".ppt", ".pptx")):
             return os.path.normpath(ruta)
 
     print(f"ERROR: no se encontró archivo indexable: {archivo}")

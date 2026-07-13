@@ -57,6 +57,54 @@ def listar_fuentes_indexadas(client):
     return fuentes
 
 
+def estadisticas_indice(client, fuentes_catalogo: set[str] | None = None):
+    """Totales del índice vectorial y chunks huérfanos (fuente no está en Postgres)."""
+    vacio = {
+        "coleccion_existe": False,
+        "total_chunks": 0,
+        "fuentes": 0,
+        "chunks_en_catalogo": 0,
+        "huerfanos_chunks": 0,
+        "huerfanos": [],
+    }
+    if not client.collections.exists(WEAVIATE_COLLECTION):
+        return vacio
+
+    collection = client.collections.get(WEAVIATE_COLLECTION)
+    total_res = collection.aggregate.over_all(total_count=True)
+    total_chunks = int(total_res.total_count or 0)
+
+    grouped = collection.aggregate.over_all(
+        group_by=GroupByAggregate(prop="fuente"),
+    )
+
+    catalogo = {normalizar_fuente(f) for f in (fuentes_catalogo or set())}
+    chunks_en_catalogo = 0
+    huerfanos: list[dict] = []
+    fuentes_count = 0
+
+    for grupo in grouped.groups or []:
+        raw = grupo.grouped_by.value
+        if not raw:
+            continue
+        fuentes_count += 1
+        fuente = normalizar_fuente(raw)
+        count = int(grupo.total_count or 0)
+        if catalogo and fuente in catalogo:
+            chunks_en_catalogo += count
+        else:
+            huerfanos.append({"fuente": fuente, "chunks": count})
+
+    return {
+        "coleccion_existe": True,
+        "total_chunks": total_chunks,
+        "fuentes": fuentes_count,
+        "chunks_en_catalogo": chunks_en_catalogo,
+        "huerfanos_chunks": sum(h["chunks"] for h in huerfanos),
+        "huerfanos": sorted(huerfanos, key=lambda x: -x["chunks"]),
+    }
+
+
 def eliminar_chunks_por_fuente(client, fuente):
     if not client.collections.exists(WEAVIATE_COLLECTION):
         return 0
@@ -75,6 +123,7 @@ def eliminar_chunks_por_fuente(client, fuente):
 
 def almacenar_chunks(client, chunks, vectores, fuente):
     fuente = normalizar_fuente(fuente)
+    crear_collection(client)
     previos = eliminar_chunks_por_fuente(client, fuente)
     if previos:
         print(f"Reemplazando índice: {previos} chunks previos eliminados de {fuente}")

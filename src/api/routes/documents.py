@@ -5,14 +5,15 @@ import uuid
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from sqlalchemy.orm import Session
 
-from config.settings import ALLOWED_UPLOAD_EXTENSIONS, DATA_DIR, UPLOAD_MAX_MB
+from config.settings import ALLOWED_UPLOAD_EXTENSIONS, UPLOAD_MAX_MB
 from src.api.deps import get_db, get_default_user, get_pipeline
 from src.db import documents_repository as doc_repo
 from src.db.models import User
-from src.db.schemas import DocumentOut, DocumentUploadResponse
-from src.ingestion.index_registry import eliminar_del_registro, registrar_indexacion, cargar_registro, guardar_registro
+from src.db.schemas import DocumentOut, DocumentUploadResponse, IndexStatsOut
+from src.ingestion.index_queue import obtener_cola_indexacion, ruta_pendiente
+from src.rag.errors import IndiceVectorialError, traducir_error_weaviate
 from src.rag.pipeline import RAGPipeline
-from src.storage.weaviate_client import eliminar_chunks_por_fuente
+from src.storage.weaviate_client import eliminar_chunks_por_fuente, estadisticas_indice
 
 router = APIRouter(prefix="/api/documents", tags=["documents"])
 
@@ -27,19 +28,46 @@ def _sanitizar_nombre(nombre: str) -> str:
     return limpio.replace(" ", "_")
 
 
-def _ruta_destino(nombre: str) -> str:
-    os.makedirs(DATA_DIR, exist_ok=True)
-    return os.path.join(DATA_DIR, nombre)
-
-
 @router.get("", response_model=list[DocumentOut])
 def listar_documentos(
     db: Session = Depends(get_db),
     user: User = Depends(get_default_user),
+):
+    return doc_repo.listar_documentos(db, user.id)
+
+
+@router.get("/index-stats", response_model=IndexStatsOut)
+def estadisticas_indice_vectorial(
+    db: Session = Depends(get_db),
+    user: User = Depends(get_default_user),
     pipeline: RAGPipeline = Depends(get_pipeline),
 ):
-    doc_repo.sincronizar_desde_disco(db, user.id, pipeline.cliente_weaviate)
-    return doc_repo.listar_documentos(db, user.id)
+    try:
+        docs = doc_repo.listar_documentos(db, user.id)
+        catalogo = {d.ruta for d in docs}
+        return estadisticas_indice(pipeline.cliente_weaviate, catalogo)
+    except Exception as exc:
+        traducido = traducir_error_weaviate(exc)
+        if isinstance(traducido, IndiceVectorialError):
+            raise HTTPException(503, str(traducido)) from exc
+        raise
+
+
+@router.delete("")
+def eliminar_todos_documentos(
+    db: Session = Depends(get_db),
+    user: User = Depends(get_default_user),
+    pipeline: RAGPipeline = Depends(get_pipeline),
+):
+    docs = doc_repo.listar_documentos(db, user.id)
+    for doc in docs:
+        ruta_tmp = ruta_pendiente(doc.id, doc.extension)
+        if os.path.isfile(ruta_tmp):
+            os.remove(ruta_tmp)
+        eliminar_chunks_por_fuente(pipeline.cliente_weaviate, doc.ruta)
+
+    eliminados = doc_repo.eliminar_todos_documentos_db(db, user.id)
+    return {"ok": True, "eliminados": eliminados}
 
 
 @router.post("/upload", response_model=DocumentUploadResponse)
@@ -62,47 +90,30 @@ async def subir_documento(
     if len(contenido) > max_bytes:
         raise HTTPException(400, f"Archivo demasiado grande (máx. {UPLOAD_MAX_MB} MB)")
 
-    ruta = _ruta_destino(nombre)
-    norm = os.path.normpath(ruta).replace("\\", "/")
-
-    existente = doc_repo.obtener_por_ruta(db, norm)
-    if existente and existente.estado != "error":
+    existente = doc_repo.obtener_por_nombre(db, user.id, nombre)
+    if existente and existente.estado in ("pendiente", "indexando", "indexado"):
         raise HTTPException(409, f"Ya existe un documento con el nombre '{nombre}'")
     if existente:
-        if os.path.isfile(ruta):
-            os.remove(ruta)
+        eliminar_chunks_por_fuente(pipeline.cliente_weaviate, existente.ruta)
+        ruta_vieja = ruta_pendiente(existente.id, existente.extension)
+        if os.path.isfile(ruta_vieja):
+            os.remove(ruta_vieja)
         doc_repo.eliminar_documento_db(db, existente)
 
-    with open(ruta, "wb") as f:
-        f.write(contenido)
-
     doc = doc_repo.crear_documento(
-        db, user.id, nombre, norm, ext, len(contenido), estado="indexando"
+        db, user.id, nombre, ext, len(contenido), estado="pendiente"
     )
 
-    resultado = pipeline.indexar(norm)
-    if resultado["ok"]:
-        registro = cargar_registro()
-        registrar_indexacion(registro, norm, resultado["chunks"])
-        guardar_registro(registro)
-        doc = doc_repo.actualizar_tras_indexar(
-            db,
-            doc,
-            ok=True,
-            perfil=resultado.get("perfil", ""),
-            chunks=resultado["chunks"],
-        )
-        mensaje = f"Indexado: {resultado['chunks']} chunks"
-    else:
-        doc = doc_repo.actualizar_tras_indexar(
-            db,
-            doc,
-            ok=False,
-            error=resultado.get("error", "Error desconocido"),
-        )
-        mensaje = "Error al indexar"
+    ruta_tmp = ruta_pendiente(doc.id, ext)
+    with open(ruta_tmp, "wb") as f:
+        f.write(contenido)
 
-    return DocumentUploadResponse(documento=doc, mensaje=mensaje)
+    obtener_cola_indexacion().encolar(doc.id, ruta_tmp)
+
+    return DocumentUploadResponse(
+        documento=doc,
+        mensaje="Archivo recibido. La indexación continúa en segundo plano.",
+    )
 
 
 @router.delete("/{document_id}")
@@ -116,14 +127,10 @@ def eliminar_documento(
     if not doc:
         raise HTTPException(404, "Documento no encontrado")
 
+    ruta_tmp = ruta_pendiente(doc.id, doc.extension)
+    if os.path.isfile(ruta_tmp):
+        os.remove(ruta_tmp)
+
     eliminar_chunks_por_fuente(pipeline.cliente_weaviate, doc.ruta)
-    eliminar_del_registro(doc.ruta)
-
-    ruta_disco = doc.ruta
-    if not os.path.isabs(ruta_disco):
-        ruta_disco = os.path.normpath(ruta_disco)
-    if os.path.isfile(ruta_disco):
-        os.remove(ruta_disco)
-
     doc_repo.eliminar_documento_db(db, doc)
     return {"ok": True, "id": str(document_id)}
