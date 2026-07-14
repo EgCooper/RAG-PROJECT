@@ -1,3 +1,5 @@
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { IconBot, IconUser } from "./Icons";
 import SourcePanel from "./SourcePanel";
 import { formatearRespuesta } from "../utils/formatRespuesta";
@@ -13,7 +15,11 @@ export default function ChatMessage({ mensaje }) {
       </div>
       <div className="message-body">
         <div className={`message-content ${esUsuario ? "" : "message-content--prose"}`}>
-          {contenido}
+          {esUsuario ? (
+            contenido
+          ) : (
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>{contenido}</ReactMarkdown>
+          )}
         </div>
         {!esUsuario && mensaje.chunks?.length > 0 && (
           <SourcePanel chunks={mensaje.chunks} />

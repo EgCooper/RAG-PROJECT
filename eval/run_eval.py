@@ -68,7 +68,7 @@ def es_no_info(respuesta):
 
 
 def tiene_tabla_markdown(respuesta):
-    """Heuristica: detecta tablas markdown (regla 3 las prohibe)."""
+    """Heuristica: detecta tablas markdown."""
     lineas = respuesta.splitlines()
     for ln in lineas:
         if ln.count("|") >= 2:
@@ -97,10 +97,13 @@ def evaluar_item(item, respuesta, chunks):
         respuesta_ok = len(resp_faltantes) == 0 if kw_resp else None
 
     problemas_formato = []
-    if tipo == "lista_tabla" and tiene_tabla_markdown(respuesta):
-        problemas_formato.append("uso tabla markdown (regla 3 pide texto plano)")
+    # Formato enriquecido permitido: solo avisamos si un código puntual vino como tabla grande
     if tipo == "codigo_especifico" and tiene_tabla_markdown(respuesta):
-        problemas_formato.append("uso tabla/markdown para un solo codigo (regla 3 pide 1 oracion)")
+        lineas_tabla = sum(1 for ln in respuesta.splitlines() if ln.count("|") >= 2)
+        if lineas_tabla >= 4:
+            problemas_formato.append(
+                "tabla markdown demasiado extensa para un solo código"
+            )
 
     if respuesta_ok:
         diagnostico = "OK"

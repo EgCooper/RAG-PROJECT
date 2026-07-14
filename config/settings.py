@@ -39,6 +39,21 @@ PENDING_UPLOAD_DIR = os.getenv("PENDING_UPLOAD_DIR", "uploads/pending")
 ALLOWED_UPLOAD_EXTENSIONS = {".pdf", ".csv", ".docx", ".md", ".ppt", ".pptx"}
 UPLOAD_BATCH_MAX_FILES = int(os.getenv("UPLOAD_BATCH_MAX_FILES", "100"))
 
+# CORS: orígenes extra separados por coma (ej. http://192.168.1.45:5173)
+# Por defecto también se permiten IPs privadas típicas de LAN en el puerto 5173.
+CORS_ORIGINS = [
+    o.strip()
+    for o in os.getenv(
+        "CORS_ORIGINS",
+        "http://localhost:5173,http://127.0.0.1:5173",
+    ).split(",")
+    if o.strip()
+]
+CORS_ORIGIN_REGEX = os.getenv(
+    "CORS_ORIGIN_REGEX",
+    r"https?://(localhost|127\.0\.0\.1|192\.168\.\d{1,3}\.\d{1,3}|10\.\d{1,3}\.\d{1,3}\.\d{1,3}|172\.(1[6-9]|2\d|3[0-1])\.\d{1,3}\.\d{1,3}):(5173|4173)",
+)
+
 # Retrieval
 TOP_K_CHUNKS         = 16
 HYBRID_ALPHA         = 0.3

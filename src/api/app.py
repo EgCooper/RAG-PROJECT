@@ -3,7 +3,12 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from config.settings import UPLOAD_BATCH_MAX_FILES, UPLOAD_MAX_MB
+from config.settings import (
+    CORS_ORIGIN_REGEX,
+    CORS_ORIGINS,
+    UPLOAD_BATCH_MAX_FILES,
+    UPLOAD_MAX_MB,
+)
 from src.api.deps import set_pipeline
 from src.api.routes import chat, documents, sessions
 from src.db.bootstrap import inicializar_db
@@ -30,7 +35,8 @@ app = FastAPI(title="RAG ACH API", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+    allow_origins=CORS_ORIGINS,
+    allow_origin_regex=CORS_ORIGIN_REGEX,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

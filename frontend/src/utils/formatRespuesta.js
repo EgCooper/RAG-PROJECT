@@ -1,35 +1,33 @@
 /**
- * Limpia la respuesta del LLM para mostrar solo texto útil en el front.
+ * Limpia ruido de la respuesta del LLM y deja el Markdown usable en el chat.
+ * Solo elimina thinking/citas; no strippea negritas, tablas ni encabezados.
  */
+
+/** Separa filas de tabla pegadas en una sola línea (común en salidas del LLM). */
+function normalizarTablasMarkdown(texto) {
+  return texto
+    .split("\n")
+    .map((line) => {
+      const pipes = (line.match(/\|/g) || []).length;
+      if (pipes < 6) return line;
+      return line
+        .replace(/\|\s*\|(?=\s*-{2,})/g, "|\n|")
+        .replace(/\|\s*\|(?=\s*[^\s|\n-])/g, "|\n|");
+    })
+    .join("\n");
+}
+
 export function formatearRespuesta(texto) {
   if (!texto) return "";
 
   let t = texto
-    .replace(/[\s\S]*?<\/redacted_thinking>/gi, "")
-    .replace(/[\s\S]*?<\/think>/gi, "");
+    .replace(/<think>[\s\S]*?<\/think>/gi, "")
+    .replace(/<\/?think>/gi, "");
 
-  t = t.replace(/\[[^\]]+\.pdf,\s*p\.\d+\]/gi, "");
+  // Citas estilo [archivo.pdf, p.N] — las fuentes van en SourcePanel
+  t = t.replace(/\[[^\]]+\.(?:pdf|csv|docx|md|ppt|pptx),\s*p\.\d+\]/gi, "");
 
-  const lineas = t.split("\n");
-  const partes = [];
+  t = normalizarTablasMarkdown(t);
 
-  for (const linea of lineas) {
-    const s = linea.trim();
-    if (!s) continue;
-    if (s.startsWith("#")) continue;
-    if (s.includes("|")) continue;
-    if (/^[-|:]+$/.test(s.replace(/\|/g, "").trim())) continue;
-
-    const limpia = s
-      .replace(/\*\*([^*]+)\*\*/g, "$1")
-      .replace(/\*([^*]+)\*/g, "$1")
-      .replace(/^[-*]\s+/, "")
-      .trim();
-
-    if (limpia) partes.push(limpia);
-  }
-
-  if (partes.length === 1) return partes[0];
-
-  return partes.join("\n").trim();
+  return t.trim();
 }
