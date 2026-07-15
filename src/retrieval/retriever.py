@@ -4,7 +4,6 @@ import weaviate.classes.query as wq
 from weaviate.classes.query import Filter
 
 from config.settings import (
-    WEAVIATE_COLLECTION,
     TOP_K_CHUNKS,
     HYBRID_ALPHA,
     TABLE_QUERY_MAX,
@@ -20,6 +19,7 @@ from config.tables_ach import (
 from src.retrieval.reranker import rerank_chunks
 from src.retrieval.dedup import deduplicar_chunks
 from src.storage.weaviate_client import crear_collection
+from src.storage.weaviate_client import collection_tenant
 from src.rag.errors import traducir_error_weaviate
 
 _LISTA_TABLA_KEYWORDS = (
@@ -115,17 +115,25 @@ def _aplicar_rerank(pregunta, chunks, reranker):
     return rerank_chunks(pregunta, chunks, reranker)
 
 
-def buscar_chunks(client, pregunta, vector_pregunta, reranker=None):
+def buscar_chunks(
+    client,
+    pregunta,
+    vector_pregunta,
+    reranker=None,
+    *,
+    tenant: str,
+    usa_tablas_ach: bool = False,
+):
     try:
         crear_collection(client)
-        collection = client.collections.get(WEAVIATE_COLLECTION)
+        collection = collection_tenant(client, tenant)
     except Exception as e:
         raise traducir_error_weaviate(e) from e
 
-    filtro_fuente = inferir_filtro_fuente(pregunta)
+    filtro_fuente = inferir_filtro_fuente(pregunta) if usa_tablas_ach else None
 
     try:
-        if _es_consulta_listar_tabla(pregunta):
+        if usa_tablas_ach and _es_consulta_listar_tabla(pregunta):
             tabla_id = inferir_tabla_id_consulta(pregunta)
             if tabla_id:
                 chunks = _buscar_tabla_completa(collection, tabla_id, filtro_fuente)

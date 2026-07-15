@@ -3,31 +3,37 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from src.api.deps import get_db, get_default_user
+from src.api.deps import get_db, get_default_user, get_proyecto_activo
 from src.db import repository
-from src.db.models import User
+from src.db.models import Proyecto, User
 from src.db.schemas import SessionCreateResponse, SessionDetail, SessionSummary
 
 router = APIRouter(prefix="/api/sessions", tags=["sessions"])
 
 
 @router.get("", response_model=list[SessionSummary])
-def listar_sesiones(db: Session = Depends(get_db), user: User = Depends(get_default_user)):
-    return repository.listar_sesiones(db, user.id)
+def listar_sesiones(
+    db: Session = Depends(get_db),
+    proyecto: Proyecto = Depends(get_proyecto_activo),
+):
+    return repository.listar_sesiones(db, proyecto.id)
 
 
 @router.post("", response_model=SessionCreateResponse)
-def crear_sesion(db: Session = Depends(get_db), user: User = Depends(get_default_user)):
-    sesion = repository.crear_sesion(db, user.id)
-    return sesion
+def crear_sesion(
+    db: Session = Depends(get_db),
+    user: User = Depends(get_default_user),
+    proyecto: Proyecto = Depends(get_proyecto_activo),
+):
+    return repository.crear_sesion(db, proyecto.id, user_id=user.id)
 
 
 @router.delete("")
 def eliminar_todas_sesiones(
     db: Session = Depends(get_db),
-    user: User = Depends(get_default_user),
+    proyecto: Proyecto = Depends(get_proyecto_activo),
 ):
-    eliminados = repository.eliminar_todas_sesiones(db, user.id)
+    eliminados = repository.eliminar_todas_sesiones(db, proyecto.id)
     return {"ok": True, "eliminados": eliminados}
 
 
@@ -35,9 +41,9 @@ def eliminar_todas_sesiones(
 def obtener_sesion(
     session_id: uuid.UUID,
     db: Session = Depends(get_db),
-    user: User = Depends(get_default_user),
+    proyecto: Proyecto = Depends(get_proyecto_activo),
 ):
-    sesion = repository.obtener_sesion(db, session_id, user.id)
+    sesion = repository.obtener_sesion(db, session_id, proyecto.id)
     if not sesion:
         raise HTTPException(404, "Sesión no encontrada")
 
@@ -63,8 +69,8 @@ def obtener_sesion(
 def eliminar_sesion(
     session_id: uuid.UUID,
     db: Session = Depends(get_db),
-    user: User = Depends(get_default_user),
+    proyecto: Proyecto = Depends(get_proyecto_activo),
 ):
-    if not repository.eliminar_sesion(db, session_id, user.id):
+    if not repository.eliminar_sesion(db, session_id, proyecto.id):
         raise HTTPException(404, "Sesión no encontrada")
     return {"ok": True}

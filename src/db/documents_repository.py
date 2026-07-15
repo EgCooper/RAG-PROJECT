@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime, timezone
 
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from src.db.models import Document
 from src.storage.weaviate_client import normalizar_fuente
@@ -27,33 +27,46 @@ def id_desde_fuente(fuente: str) -> uuid.UUID | None:
         return None
 
 
-def listar_documentos(db: Session, user_id: uuid.UUID) -> list[Document]:
+def listar_documentos(db: Session, proyecto_id: uuid.UUID) -> list[Document]:
     return list(
         db.scalars(
             select(Document)
-            .where(Document.user_id == user_id)
+            .where(Document.proyecto_id == proyecto_id)
             .order_by(Document.actualizado_en.desc())
         )
     )
 
 
-def obtener_documento(db: Session, doc_id: uuid.UUID, user_id: uuid.UUID) -> Document | None:
+def obtener_documento(
+    db: Session, doc_id: uuid.UUID, proyecto_id: uuid.UUID
+) -> Document | None:
     return db.scalar(
-        select(Document).where(Document.id == doc_id, Document.user_id == user_id)
+        select(Document).where(Document.id == doc_id, Document.proyecto_id == proyecto_id)
     )
 
 
 def obtener_documento_por_id(db: Session, doc_id: uuid.UUID) -> Document | None:
-    return db.get(Document, doc_id)
-
-
-def obtener_por_nombre(db: Session, user_id: uuid.UUID, nombre: str) -> Document | None:
     return db.scalar(
-        select(Document).where(Document.user_id == user_id, Document.nombre == nombre)
+        select(Document)
+        .options(joinedload(Document.proyecto))
+        .where(Document.id == doc_id)
     )
 
 
-def nombres_por_fuentes(db: Session, user_id: uuid.UUID, fuentes: list[str]) -> dict[str, str]:
+def obtener_por_nombre(
+    db: Session, proyecto_id: uuid.UUID, nombre: str
+) -> Document | None:
+    return db.scalar(
+        select(Document).where(
+            Document.proyecto_id == proyecto_id,
+            Document.nombre == nombre,
+        )
+    )
+
+
+def nombres_por_fuentes(
+    db: Session, proyecto_id: uuid.UUID, fuentes: list[str]
+) -> dict[str, str]:
     ids = []
     for fuente in fuentes:
         doc_id = id_desde_fuente(fuente)
@@ -63,22 +76,27 @@ def nombres_por_fuentes(db: Session, user_id: uuid.UUID, fuentes: list[str]) -> 
         return {}
 
     docs = db.scalars(
-        select(Document).where(Document.user_id == user_id, Document.id.in_(ids))
+        select(Document).where(
+            Document.proyecto_id == proyecto_id,
+            Document.id.in_(ids),
+        )
     )
     return {fuente_documento(d.id): d.nombre for d in docs}
 
 
 def crear_documento(
     db: Session,
-    user_id: uuid.UUID,
+    proyecto_id: uuid.UUID,
     nombre: str,
     extension: str,
     tamano_bytes: int,
     estado: str = "pendiente",
+    user_id: uuid.UUID | None = None,
 ) -> Document:
     doc_id = uuid.uuid4()
     doc = Document(
         id=doc_id,
+        proyecto_id=proyecto_id,
         user_id=user_id,
         nombre=nombre,
         ruta=normalizar_fuente(fuente_documento(doc_id)),
@@ -116,8 +134,8 @@ def eliminar_documento_db(db: Session, doc: Document) -> None:
     db.commit()
 
 
-def eliminar_todos_documentos_db(db: Session, user_id: uuid.UUID) -> int:
-    docs = listar_documentos(db, user_id)
+def eliminar_todos_documentos_db(db: Session, proyecto_id: uuid.UUID) -> int:
+    docs = listar_documentos(db, proyecto_id)
     for doc in docs:
         db.delete(doc)
     db.commit()

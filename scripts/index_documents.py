@@ -4,6 +4,10 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+from config.proyectos import DEFAULT_PROYECTO_SLUG
+from src.db.bootstrap import inicializar_db
+from src.db.engine import SessionLocal
+from src.db import projects_repository as proy_repo
 from src.rag.pipeline import RAGPipeline
 from src.storage.weaviate_client import listar_fuentes_indexadas, normalizar_fuente
 from src.ingestion.index_registry import (
@@ -18,17 +22,22 @@ DATA_DIR = "data"
 
 def parse_args():
     parser = argparse.ArgumentParser(
-        description="Indexar PDFs en Weaviate (por defecto solo nuevos o modificados).",
+        description="Indexar archivos en Weaviate (tenant = proyecto).",
+    )
+    parser.add_argument(
+        "--proyecto",
+        default=DEFAULT_PROYECTO_SLUG,
+        help=f"Slug del proyecto/tenant (default: {DEFAULT_PROYECTO_SLUG})",
     )
     parser.add_argument(
         "--todos",
         action="store_true",
-        help="Reindexar todos los PDFs en data/",
+        help="Reindexar todos los archivos en data/",
     )
     parser.add_argument(
         "--archivo",
         metavar="PDF",
-        help="Indexar solo este PDF (nombre en data/ o ruta)",
+        help="Indexar solo este archivo (nombre en data/ o ruta)",
     )
     parser.add_argument(
         "--forzar",
@@ -58,19 +67,29 @@ def resolver_archivo(archivo):
         candidatos.append(os.path.join(DATA_DIR, archivo))
 
     for ruta in candidatos:
-        if os.path.isfile(ruta) and ruta.lower().endswith((".pdf", ".csv", ".docx", ".md", ".ppt", ".pptx")):
+        if os.path.isfile(ruta) and ruta.lower().endswith(
+            (".pdf", ".csv", ".docx", ".md", ".ppt", ".pptx")
+        ):
             return os.path.normpath(ruta)
 
     print(f"ERROR: no se encontró archivo indexable: {archivo}")
     sys.exit(1)
 
 
-def resolver_pdf(archivo):
-    return resolver_archivo(archivo)
-
-
 def main():
     args = parse_args()
+    inicializar_db()
+
+    with SessionLocal() as db:
+        proy = proy_repo.obtener_por_slug(db, args.proyecto)
+        if not proy or not proy.activo:
+            print(f"ERROR: proyecto '{args.proyecto}' no encontrado o inactivo")
+            print("Proyectos activos:")
+            for p in proy_repo.listar_proyectos(db):
+                print(f"  - {p.slug}: {p.nombre}")
+            sys.exit(1)
+        tenant = proy.slug
+
     pdfs = listar_pdfs(args.archivo)
 
     if not pdfs:
@@ -78,7 +97,8 @@ def main():
         sys.exit(0)
 
     pipeline = RAGPipeline(requiere_llm=False)
-    fuentes_weaviate = listar_fuentes_indexadas(pipeline.cliente_weaviate)
+    pipeline.asegurar_tenant_proyecto(tenant)
+    fuentes_weaviate = listar_fuentes_indexadas(pipeline.cliente_weaviate, tenant)
     registro = cargar_registro()
 
     a_indexar = []
@@ -94,7 +114,8 @@ def main():
         else:
             omitidos.append(ruta)
 
-    print(f"PDFs en data/: {len(pdfs)}")
+    print(f"Proyecto/tenant: {tenant}")
+    print(f"Archivos en data/: {len(pdfs)}")
     if omitidos:
         print(f"Omitidos (sin cambios): {len(omitidos)}")
     print(f"A indexar: {len(a_indexar)}\n")
@@ -111,7 +132,7 @@ def main():
     for i, ruta in enumerate(a_indexar, 1):
         pdf = os.path.basename(ruta)
         print(f"[{i}/{len(a_indexar)}] Procesando: {pdf}")
-        resultado = pipeline.indexar(ruta)
+        resultado = pipeline.indexar(ruta, tenant=tenant)
         if resultado["ok"]:
             registrar_indexacion(registro, ruta, resultado["chunks"])
             fuentes_weaviate.add(normalizar_fuente(ruta))
@@ -122,7 +143,7 @@ def main():
     guardar_registro(registro)
 
     print(f"\n{'=' * 50}")
-    print(f"Resumen: {len(exitos)}/{len(a_indexar)} indexados correctamente")
+    print(f"Resumen: {len(exitos)}/{len(a_indexar)} indexados correctamente [{tenant}]")
     if omitidos:
         print(f"Omitidos: {len(omitidos)}")
 

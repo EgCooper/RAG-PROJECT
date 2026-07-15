@@ -10,9 +10,10 @@ from config.settings import (
     UPLOAD_MAX_MB,
 )
 from src.api.deps import set_pipeline
-from src.api.routes import chat, documents, sessions
+from src.api.routes import chat, documents, projects, sessions
 from src.db.bootstrap import inicializar_db
-from src.db.engine import verificar_conexion
+from src.db.engine import SessionLocal, verificar_conexion
+from src.db import projects_repository as proy_repo
 from src.ingestion.index_queue import obtener_cola_indexacion, recuperar_trabajos_pendientes
 from src.llm.llm_factory import info_proveedor
 from src.rag.pipeline import RAGPipeline
@@ -23,6 +24,12 @@ async def lifespan(app: FastAPI):
     inicializar_db()
     pipeline = RAGPipeline()
     set_pipeline(pipeline)
+    with SessionLocal() as db:
+        for proy in proy_repo.listar_proyectos(db, solo_activos=True):
+            try:
+                pipeline.asegurar_tenant_proyecto(proy.slug)
+            except Exception as e:
+                print(f"AVISO: no se pudo crear tenant '{proy.slug}': {e}")
     obtener_cola_indexacion()
     recuperar_trabajos_pendientes()
     yield
@@ -31,7 +38,7 @@ async def lifespan(app: FastAPI):
         pipeline.cerrar()
 
 
-app = FastAPI(title="RAG ACH API", lifespan=lifespan)
+app = FastAPI(title="RAG Multi-Proyecto API", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -42,6 +49,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(projects.router)
 app.include_router(sessions.router)
 app.include_router(chat.router)
 app.include_router(documents.router)

@@ -1,10 +1,16 @@
 from src.ingestion.index_router import construir_chunks
 from src.ingestion.embedder import cargar_modelo, generar_embeddings
-from src.storage.weaviate_client import conectar, crear_collection, almacenar_chunks
+from src.storage.weaviate_client import (
+    conectar,
+    crear_collection,
+    almacenar_chunks,
+    asegurar_tenant,
+)
 from src.retrieval.retriever import buscar_chunks
 from src.retrieval.reranker import cargar_reranker
 from src.llm.llm_factory import crear_cliente, generar_respuesta, info_proveedor
-from src.llm.prompt import SYSTEM_PROMPT, construir_prompt
+from src.llm.prompt import construir_prompt
+from config.proyectos import system_prompt_para, usa_tablas_ach
 from config.settings import RERANK_ENABLED, RERANK_MODEL
 from config.validate_env import validar_env
 from src.rag.errors import MENSAJE_INDICE_VACIO
@@ -16,17 +22,22 @@ class RAGPipeline:
         validar_env(requiere_llm=requiere_llm)
         print(f"Iniciando pipeline RAG... (LLM: {info_proveedor()})")
         self.modelo_embeddings = cargar_modelo()
-        self.cliente_weaviate  = conectar()
-        self.cliente_llm       = crear_cliente()
-        self.reranker          = None
+        self.cliente_weaviate = conectar()
+        self.cliente_llm = crear_cliente() if requiere_llm else None
+        self.reranker = None
         crear_collection(self.cliente_weaviate)
         if RERANK_ENABLED:
             print(f"Reranker: {RERANK_MODEL} (se carga al consultar)")
         print("Pipeline listo.")
 
-    def indexar(self, ruta_archivo, fuente=None):
+    def asegurar_tenant_proyecto(self, slug: str) -> None:
+        asegurar_tenant(self.cliente_weaviate, slug)
+
+    def indexar(self, ruta_archivo, fuente=None, tenant: str | None = None):
+        if not tenant:
+            raise ValueError("tenant (slug de proyecto) es obligatorio para indexar")
         clave_fuente = fuente or ruta_archivo
-        print(f"Indexando: {ruta_archivo} → {clave_fuente}")
+        print(f"Indexando [{tenant}]: {ruta_archivo} → {clave_fuente}")
         etapa = "extraccion"
         try:
             chunks, info = construir_chunks(ruta_archivo)
@@ -36,34 +47,50 @@ class RAGPipeline:
                 for adv in info["validacion"]["advertencias"]:
                     print(f"  Advertencia: {adv}")
             etapa = "embeddings"
-            vectores  = generar_embeddings(chunks, self.modelo_embeddings)
+            vectores = generar_embeddings(chunks, self.modelo_embeddings)
             etapa = "almacenamiento"
-            almacenar_chunks(self.cliente_weaviate, chunks, vectores, clave_fuente)
-            print(f"Indexación completa: {len(chunks)} chunks almacenados")
+            almacenar_chunks(
+                self.cliente_weaviate, chunks, vectores, clave_fuente, tenant=tenant
+            )
+            print(f"Indexación completa [{tenant}]: {len(chunks)} chunks almacenados")
             return {
                 "ok": True,
                 "fuente": clave_fuente,
                 "chunks": len(chunks),
                 "perfil": perfil,
+                "tenant": tenant,
             }
         except Exception as e:
             print(f"ERROR en {ruta_archivo} ({etapa}): {e}")
-            return {"ok": False, "fuente": clave_fuente, "etapa": etapa, "error": str(e)}
+            return {
+                "ok": False,
+                "fuente": clave_fuente,
+                "etapa": etapa,
+                "error": str(e),
+                "tenant": tenant,
+            }
 
-    def consultar(self, pregunta):
+    def consultar(self, pregunta, proyecto):
         if RERANK_ENABLED and self.reranker is None:
             print(f"Cargando reranker: {RERANK_MODEL}...")
             self.reranker = cargar_reranker()
 
+        tenant = proyecto.slug
         vector_pregunta = self.modelo_embeddings.embed_query(pregunta)
-        chunks          = buscar_chunks(
-            self.cliente_weaviate, pregunta, vector_pregunta, self.reranker
+        chunks = buscar_chunks(
+            self.cliente_weaviate,
+            pregunta,
+            vector_pregunta,
+            self.reranker,
+            tenant=tenant,
+            usa_tablas_ach=usa_tablas_ach(proyecto),
         )
         if not chunks:
             return MENSAJE_INDICE_VACIO, []
 
-        prompt          = construir_prompt(pregunta, chunks)
-        respuesta       = generar_respuesta(self.cliente_llm, SYSTEM_PROMPT, prompt)
+        prompt = construir_prompt(pregunta, chunks)
+        system = system_prompt_para(proyecto)
+        respuesta = generar_respuesta(self.cliente_llm, system, prompt)
         return respuesta, chunks
 
     def cerrar(self):

@@ -37,17 +37,26 @@ def _procesar_trabajo(doc_id: uuid.UUID, tmp_path: str) -> None:
             _limpiar_archivo(tmp_path)
             return
 
+        tenant = doc.proyecto.slug if doc.proyecto else None
+        if not tenant:
+            doc_repo.actualizar_tras_indexar(
+                db, doc, ok=False, error="Documento sin proyecto asociado"
+            )
+            return
+
         doc.estado = "indexando"
         doc.error = None
         db.commit()
 
         pipeline = get_pipeline()
-        resultado = pipeline.indexar(tmp_path, fuente=doc.ruta)
+        resultado = pipeline.indexar(tmp_path, fuente=doc.ruta, tenant=tenant)
 
         doc = doc_repo.obtener_documento_por_id(db, doc_id)
         if not doc:
             if not resultado["ok"]:
-                eliminar_chunks_por_fuente(pipeline.cliente_weaviate, resultado["fuente"])
+                eliminar_chunks_por_fuente(
+                    pipeline.cliente_weaviate, resultado["fuente"], tenant
+                )
             return
 
         if resultado["ok"]:
@@ -59,7 +68,7 @@ def _procesar_trabajo(doc_id: uuid.UUID, tmp_path: str) -> None:
                 chunks=resultado["chunks"],
             )
         else:
-            eliminar_chunks_por_fuente(pipeline.cliente_weaviate, doc.ruta)
+            eliminar_chunks_por_fuente(pipeline.cliente_weaviate, doc.ruta, tenant)
             doc_repo.actualizar_tras_indexar(
                 db,
                 doc,
@@ -71,7 +80,11 @@ def _procesar_trabajo(doc_id: uuid.UUID, tmp_path: str) -> None:
         if doc:
             try:
                 pipeline = get_pipeline()
-                eliminar_chunks_por_fuente(pipeline.cliente_weaviate, doc.ruta)
+                tenant = doc.proyecto.slug if doc.proyecto else None
+                if tenant:
+                    eliminar_chunks_por_fuente(
+                        pipeline.cliente_weaviate, doc.ruta, tenant
+                    )
             except Exception:
                 pass
             doc_repo.actualizar_tras_indexar(db, doc, ok=False, error=str(e))

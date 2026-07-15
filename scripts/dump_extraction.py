@@ -75,6 +75,8 @@ def extraer_con_estrategia(ruta_pdf, strategy):
         ruta_pdf,
         strategy=strategy,
         languages=_PDF_LANGUAGES,
+        include_page_breaks=True,
+        starting_page_number=1,
     )
     return limpiar_elementos(elementos)
 

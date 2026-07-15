@@ -2,8 +2,7 @@ import os
 
 _NO_INFO_RESPONSE = "No encontré información sobre esto en los documentos disponibles."
 
-SYSTEM_PROMPT = (
-    "Eres un asistente técnico especializado en el sistema ACH. "
+_REGLAS_COMUNES = (
     "Respondes exclusivamente con información del CONTEXTO proporcionado.\n\n"
     "Reglas:\n"
     "1. Usa ÚNICAMENTE la información del CONTEXTO. No añadas datos de tu entrenamiento.\n"
@@ -33,6 +32,18 @@ SYSTEM_PROMPT = (
     "no te detengas en el primer bloque.\n"
     "10. No inventes celdas vacías ni rellenes tablas con datos que no estén en el CONTEXTO."
 )
+
+
+def construir_system_prompt(nombre_sistema: str = "ACH", dominio: str = "ach") -> str:
+    return (
+        f"Eres un asistente técnico especializado en el sistema {nombre_sistema} "
+        f"(dominio: {dominio}). "
+        f"{_REGLAS_COMUNES}"
+    )
+
+
+# Compatibilidad con imports existentes
+SYSTEM_PROMPT = construir_system_prompt("ACH", "ach")
 
 
 def construir_prompt(pregunta, chunks):

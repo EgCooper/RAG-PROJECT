@@ -1,11 +1,26 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, String, Text, func
+from sqlalchemy import Boolean, DateTime, ForeignKey, String, Text, UniqueConstraint, func
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.db.engine import Base
+
+
+class Proyecto(Base):
+    __tablename__ = "proyectos"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    slug: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
+    nombre: Mapped[str] = mapped_column(String(120), nullable=False)
+    descripcion: Mapped[str] = mapped_column(String(255), default="")
+    activo: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    config: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    creado_en: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    sessions: Mapped[list["ChatSession"]] = relationship(back_populates="proyecto")
+    documents: Mapped[list["Document"]] = relationship(back_populates="proyecto")
 
 
 class User(Base):
@@ -22,14 +37,20 @@ class ChatSession(Base):
     __tablename__ = "chat_sessions"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    proyecto_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("proyectos.id"), nullable=False
+    )
+    user_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id"), nullable=True
+    )
     titulo: Mapped[str] = mapped_column(String(200), default="Nueva conversación")
     creado_en: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     actualizado_en: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
 
-    user: Mapped["User"] = relationship(back_populates="sessions")
+    proyecto: Mapped["Proyecto"] = relationship(back_populates="sessions")
+    user: Mapped["User | None"] = relationship(back_populates="sessions")
     messages: Mapped[list["ChatMessage"]] = relationship(
         back_populates="session",
         order_by="ChatMessage.creado_en",
@@ -55,9 +76,17 @@ class ChatMessage(Base):
 
 class Document(Base):
     __tablename__ = "documents"
+    __table_args__ = (
+        UniqueConstraint("proyecto_id", "nombre", name="uq_documents_proyecto_nombre"),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    proyecto_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("proyectos.id"), nullable=False
+    )
+    user_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id"), nullable=True
+    )
     nombre: Mapped[str] = mapped_column(String(255), nullable=False)
     ruta: Mapped[str] = mapped_column(String(512), unique=True, nullable=False)
     extension: Mapped[str] = mapped_column(String(10), nullable=False)
@@ -71,4 +100,5 @@ class Document(Base):
         DateTime(timezone=True), server_default=func.now()
     )
 
-    user: Mapped["User"] = relationship()
+    proyecto: Mapped["Proyecto"] = relationship(back_populates="documents")
+    user: Mapped["User | None"] = relationship()

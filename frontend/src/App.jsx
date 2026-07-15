@@ -4,8 +4,11 @@ import {
   crearSesion,
   eliminarSesion,
   eliminarTodasSesiones,
+  getProyectoSlug,
+  listarProyectos,
   listarSesiones,
   obtenerSesion,
+  setProyectoSlug,
 } from "./api";
 import Sidebar from "./components/Sidebar";
 import ChatMessage from "./components/ChatMessage";
@@ -47,11 +50,17 @@ export default function App() {
   const [confirmarEliminarTodas, setConfirmarEliminarTodas] = useState(false);
   const [eliminandoSesionId, setEliminandoSesionId] = useState(null);
   const [eliminandoTodasSesiones, setEliminandoTodasSesiones] = useState(false);
+  const [proyectos, setProyectos] = useState([]);
+  const [proyectoSlug, setProyectoSlugState] = useState(getProyectoSlug);
+  const [docsKey, setDocsKey] = useState(0);
   const [esDesktop, setEsDesktop] = useState(
     () => window.matchMedia("(min-width: 900px)").matches
   );
   const finRef = useRef(null);
   const inputRef = useRef(null);
+
+  const proyectoActivo =
+    proyectos.find((p) => p.slug === proyectoSlug) || proyectos[0] || null;
 
   const recargarSesiones = useCallback(async () => {
     try {
@@ -64,11 +73,40 @@ export default function App() {
 
   useEffect(() => {
     (async () => {
+      try {
+        const lista = await listarProyectos();
+        setProyectos(lista);
+        const slugGuardado = getProyectoSlug();
+        const existe = lista.some((p) => p.slug === slugGuardado);
+        if (!existe && lista[0]) {
+          setProyectoSlug(lista[0].slug);
+          setProyectoSlugState(lista[0].slug);
+        }
+      } catch (err) {
+        console.error(err);
+        setError(err.message);
+      }
+    })();
+  }, []);
+
+  useEffect(() => {
+    (async () => {
       setCargandoSesiones(true);
+      setSessionId(null);
+      setMensajes([]);
       await recargarSesiones();
       setCargandoSesiones(false);
+      setDocsKey((k) => k + 1);
     })();
-  }, [recargarSesiones]);
+  }, [proyectoSlug, recargarSesiones]);
+
+  async function handleCambiarProyecto(slug) {
+    if (!slug || slug === proyectoSlug) return;
+    setProyectoSlug(slug);
+    setProyectoSlugState(slug);
+    setVista("chat");
+    setError("");
+  }
 
   useEffect(() => {
     finRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -235,7 +273,6 @@ export default function App() {
         abierto={sidebarAbierto}
         oculto={sidebarOculto}
         onCerrar={() => setSidebarAbierto(false)}
-        onOcultar={ocultarSidebar}
         onNueva={handleNueva}
         onSeleccionar={abrirSesion}
         onSolicitarEliminar={solicitarEliminarSesion}
@@ -252,6 +289,9 @@ export default function App() {
           setVista(v);
           setSidebarAbierto(false);
         }}
+        proyectos={proyectos}
+        proyectoActivo={proyectoActivo}
+        onCambiarProyecto={handleCambiarProyecto}
       />
 
       <div className="main">
@@ -266,7 +306,7 @@ export default function App() {
             {sidebarVisible ? <IconChevronLeft /> : <IconMenu />}
           </button>
           <div className="topbar-title">
-            <h1>Asistente ACH</h1>
+            <h1>Asistente {proyectoActivo?.nombre || "RAG"}</h1>
             <span className="topbar-sub">
               {vista === "chat"
                 ? "Consultas sobre documentación indexada"
@@ -289,7 +329,7 @@ export default function App() {
 
         {vista === "documents" ? (
           <main className="documents-main">
-            <DocumentsView />
+            <DocumentsView key={docsKey} />
           </main>
         ) : (
           <>
@@ -299,8 +339,9 @@ export default function App() {
               <div className="welcome-card">
                 <h2>¿En qué te puedo ayudar?</h2>
                 <p>
-                  Preguntá por códigos de error, abonabilidad, parámetros o
-                  procedimientos de los manuales ACH.
+                  Preguntá sobre la documentación indexada de{" "}
+                  <strong>{proyectoActivo?.nombre || "este proyecto"}</strong>.
+                  Los chats y documentos están aislados por proyecto.
                 </p>
               </div>
             </div>

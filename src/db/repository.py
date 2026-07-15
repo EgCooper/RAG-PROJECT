@@ -32,37 +32,55 @@ def obtener_o_crear_usuario_default(db: Session) -> User:
     return usuario
 
 
-def listar_sesiones(db: Session, user_id: uuid.UUID) -> list[ChatSession]:
+def listar_sesiones(db: Session, proyecto_id: uuid.UUID) -> list[ChatSession]:
     return list(
         db.scalars(
             select(ChatSession)
-            .where(ChatSession.user_id == user_id)
+            .where(ChatSession.proyecto_id == proyecto_id)
             .order_by(ChatSession.actualizado_en.desc())
         )
     )
 
 
-def crear_sesion(db: Session, user_id: uuid.UUID) -> ChatSession:
-    sesion = ChatSession(user_id=user_id)
+def crear_sesion(
+    db: Session,
+    proyecto_id: uuid.UUID,
+    user_id: uuid.UUID | None = None,
+) -> ChatSession:
+    sesion = ChatSession(proyecto_id=proyecto_id, user_id=user_id)
     db.add(sesion)
     db.commit()
     db.refresh(sesion)
     return sesion
 
 
-def obtener_sesion(db: Session, session_id: uuid.UUID, user_id: uuid.UUID) -> ChatSession | None:
+def obtener_sesion(
+    db: Session,
+    session_id: uuid.UUID,
+    proyecto_id: uuid.UUID,
+) -> ChatSession | None:
     return db.scalar(
         select(ChatSession)
         .options(joinedload(ChatSession.messages))
-        .where(ChatSession.id == session_id, ChatSession.user_id == user_id)
+        .where(
+            ChatSession.id == session_id,
+            ChatSession.proyecto_id == proyecto_id,
+        )
     )
 
 
-def eliminar_sesion(db: Session, session_id: uuid.UUID, user_id: uuid.UUID) -> bool:
+def eliminar_sesion(
+    db: Session,
+    session_id: uuid.UUID,
+    proyecto_id: uuid.UUID,
+) -> bool:
     sesion = db.scalar(
         select(ChatSession)
         .options(joinedload(ChatSession.messages))
-        .where(ChatSession.id == session_id, ChatSession.user_id == user_id)
+        .where(
+            ChatSession.id == session_id,
+            ChatSession.proyecto_id == proyecto_id,
+        )
     )
     if not sesion:
         return False
@@ -71,11 +89,11 @@ def eliminar_sesion(db: Session, session_id: uuid.UUID, user_id: uuid.UUID) -> b
     return True
 
 
-def eliminar_todas_sesiones(db: Session, user_id: uuid.UUID) -> int:
+def eliminar_todas_sesiones(db: Session, proyecto_id: uuid.UUID) -> int:
     sesiones = db.scalars(
         select(ChatSession)
         .options(selectinload(ChatSession.messages))
-        .where(ChatSession.user_id == user_id)
+        .where(ChatSession.proyecto_id == proyecto_id)
     ).all()
     for sesion in sesiones:
         db.delete(sesion)
@@ -116,10 +134,13 @@ def actualizar_sesion_tras_mensaje(
 
 
 def obtener_o_crear_sesion(
-    db: Session, user_id: uuid.UUID, session_id: uuid.UUID | None
+    db: Session,
+    proyecto_id: uuid.UUID,
+    session_id: uuid.UUID | None,
+    user_id: uuid.UUID | None = None,
 ) -> ChatSession:
     if session_id:
-        sesion = obtener_sesion(db, session_id, user_id)
+        sesion = obtener_sesion(db, session_id, proyecto_id)
         if sesion:
             return sesion
-    return crear_sesion(db, user_id)
+    return crear_sesion(db, proyecto_id, user_id=user_id)

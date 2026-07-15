@@ -12,5 +12,7 @@ def extraer_pdf(ruta_pdf):
         ruta_pdf,
         strategy="hi_res",
         languages=_PDF_LANGUAGES,
+        include_page_breaks=True,
+        starting_page_number=1,
     )
     return limpiar_elementos(elementos)

@@ -1,4 +1,4 @@
-# Setup — Asistente RAG ACH
+# Setup — Asistente RAG (multi-proyecto)
 
 Guía para levantar el proyecto en Windows (Linux/macOS: mismos pasos, rutas distintas).
 
@@ -7,9 +7,23 @@ Guía para levantar el proyecto en Windows (Linux/macOS: mismos pasos, rutas dis
 | Componente | Versión | Para qué |
 |------------|---------|----------|
 | Python | 3.12 | Runtime |
-| Docker | reciente | Weaviate |
+| Docker | reciente | Weaviate + PostgreSQL |
 | Tesseract OCR | 5.x + `spa` | PDFs con `hi_res` |
 | Poppler | reciente | Render PDF en unstructured |
+
+## Proyectos
+
+El asistente aísla **chats**, **documentos** e **índice Weaviate** por proyecto:
+
+| slug | Nombre | Notas |
+|------|--------|--------|
+| `ach` | ACH | Default; tablas ACH / prompt ACH |
+| `feel-banca` | FEEL BANCA | Corpus propio |
+
+- UI: selector en el sidebar.
+- API: header `X-Proyecto-Slug: ach`.
+- Weaviate: multi-tenancy (`tenant = slug`).
+- Tras migrar a multi-tenant: **reindexar** (la colección se recrea).
 
 ## 1. Clonar e instalar
 
@@ -20,162 +34,65 @@ python -m venv venv
 pip install -r requirements.txt
 ```
 
-## 2. Dependencias de sistema
-
-**Tesseract (Windows):** instalar desde [UB-Mannheim](https://github.com/UB-Mannheim/tesseract/wiki) e incluir en PATH. Paquete de idioma `spa`.
-
-**Poppler:** descargar binarios y agregar `bin` al PATH.
-
-**Weaviate + PostgreSQL:**
+## 2. Infraestructura
 
 ```powershell
 docker compose up -d
-```
-
-PostgreSQL queda en `localhost:5432` (usuario `rag`, contraseña `rag`, base `rag_ach`).
-
-## 3. Configuración
-
-```powershell
 copy .env.example .env
 ```
 
 Editar `.env` con tu API key (MiniMax o Groq).
 
-Variables opcionales:
-
-| Variable | Default | Descripción |
-|----------|---------|-------------|
-| `RERANK_ENABLED` | `true` | Reranking cross-encoder |
-| `DEDUP_ENABLED` | `true` | Quitar chunks duplicados |
-| `DATABASE_URL` | ver `.env.example` | PostgreSQL (chats) |
-| `RERANK_CANDIDATES` | `30` | Candidatos antes del rerank |
-
-## 4. Verificar entorno
-
 ```powershell
-python scripts/health_check.py
+python scripts/init_db.py
 python scripts/health_check.py --skip-llm
 ```
 
-## 5. Indexar PDFs
-
-Colocar PDFs en `data/` y ejecutar:
+## 3. Indexar (por proyecto)
 
 ```powershell
-# Por defecto: solo PDFs nuevos o modificados
-python scripts/index_documents.py
-
-# Solo un PDF recién agregado
-python scripts/index_documents.py --archivo manual_nuevo.pdf
-
-# Reindexar todo (comportamiento anterior)
-python scripts/index_documents.py --todos
-
-# Forzar reindex de un archivo aunque no haya cambiado
-python scripts/index_documents.py --archivo manual.pdf --forzar
+python scripts/index_documents.py --proyecto ach --todos
+python scripts/index_documents.py --proyecto feel-banca --todos
+python scripts/index_documents.py --proyecto ach --archivo manual.pdf --forzar
 ```
 
-El script guarda un registro local en `data/.index_registry.json` (mtime y tamaño por archivo).
-Reindexar el mismo PDF **reemplaza** chunks previos en Weaviate (no duplica).
+También desde la UI (Documentos) con el proyecto activo en el sidebar.
 
-**Perfiles de indexación** (automático vía `index_router`):
-
-| Perfil | Archivos | Extractor |
-|--------|----------|-----------|
-| `pdf_narrativo` | Manuales, guías | unstructured `fast` |
-| `pdf_tabular` | Códigos en columnas (`CodigoErrorOrdenAch.pdf`) | pdfplumber (1 fila = 1 chunk) |
-| `csv` | Catálogos `.csv` | 1 fila = 1 chunk |
-
-Validar extracción de un PDF antes de indexar:
+## 4. API + Frontend
 
 ```powershell
-python scripts/dump_extraction.py data/CodigoErrorOrdenAch.pdf
-python scripts/index_documents.py --archivo CodigoErrorOrdenAch.pdf --forzar
-```
-
-## 6. Consultar
-
-```powershell
-python scripts/query.py
-```
-
-Cada pregunta es independiente (sin historial en el prompt RAG).
-
-## 7. PostgreSQL y chats persistentes
-
-La API crea las tablas al arrancar. Opcionalmente:
-
-```powershell
-python scripts/init_db.py
-```
-
-Variables en `.env`:
-
-```env
-DATABASE_URL=postgresql://rag:rag@localhost:5432/rag_ach
-```
-
-## 8. API + Frontend (chat web)
-
-**Terminal 1 — API (puerto 8000):**
-
-```powershell
-pip install -r requirements.txt
 uvicorn src.api.app:app --reload --host 0.0.0.0 --port 8000
 ```
-
-**Terminal 2 — Frontend (puerto 5173):**
 
 ```powershell
 cd frontend
 npm install
-npm run dev
+npm run dev -- --host 0.0.0.0 --port 5173
 ```
 
-Abrir http://localhost:5173
+Abrir http://localhost:5173 y elegir proyecto en el sidebar.
 
-Requisitos: Weaviate + **PostgreSQL** corriendo, PDFs indexados, `.env` con API key LLM y `DATABASE_URL`.
-
-El chat guarda conversaciones en Postgres. El sidebar lista sesiones anteriores y sobreviven al recargar la página.
-
-## 9. Evaluar calidad
+## 5. CLI / eval
 
 ```powershell
-python scripts/eval_rag.py --solo-retrieval
-python scripts/eval_rag.py --output eval/resultados.json
+python scripts/query.py --proyecto ach
+python eval/run_eval.py --proyecto ach --limit 5
 ```
 
-## Tablas ACH soportadas (`tabla_id`)
+## 6. Crear otro proyecto
 
-| ID | Documento típico | Consulta ejemplo |
-|----|------------------|------------------|
-| `excepciones` | Manual Operación | `lista todos los códigos de excepción` |
-| `abonabilidad` | Especificación Webservices | `lista códigos de abonabilidad` |
-| `parametros` | Manual Operación | `lista parámetros COD_ACH` |
-| `jobs` | Manual Operación | `lista jobs del scheduler` |
+```powershell
+curl -X POST http://localhost:8000/api/proyectos ^
+  -H "Content-Type: application/json" ^
+  -d "{\"nombre\":\"Mi Sistema\",\"slug\":\"mi-sistema\"}"
+```
 
-Tras cambios en `config/tables_ach.py` o `chunker.py`, **reindexar**.
-
-## Filtro por documento
-
-Si la pregunta menciona el documento, el retrieval filtra automáticamente:
-
-- *"en el manual…"* → Manual Operación
-- *"en la guía…"* → Guía implementación
-- *"webservice / especificación…"* → Especificación Webservices
-
-## Estructura
+## Modelo
 
 ```
-data/           PDFs fuente
-eval/           Dataset y resultados de evaluación
-scripts/        index_documents, query, eval_rag, health_check
-src/ingestion/  extracción, chunking, embeddings
-src/retrieval/  retriever, reranker, dedup
-src/storage/    Weaviate
-src/llm/        MiniMax / Groq
-config/         settings, tablas ACH, validación env
-src/api/          FastAPI
-frontend/         React (Vite)
+proyectos
+ ├── documents
+ └── chat_sessions → chat_messages
 ```
+
+Weaviate colección `Documento` + tenant por `proyecto.slug`.

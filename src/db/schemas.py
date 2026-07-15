@@ -1,7 +1,23 @@
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime
 
 from pydantic import BaseModel, Field
+
+
+class ProyectoOut(BaseModel):
+    id: uuid.UUID
+    slug: str
+    nombre: str
+    descripcion: str = ""
+    activo: bool = True
+
+    model_config = {"from_attributes": True}
+
+
+class ProyectoCreate(BaseModel):
+    nombre: str = Field(..., min_length=1, max_length=120)
+    slug: str | None = Field(default=None, max_length=64)
+    descripcion: str = Field(default="", max_length=255)
 
 
 class SessionSummary(BaseModel):
@@ -42,6 +58,7 @@ class ChatResponse(BaseModel):
     session_id: uuid.UUID
     respuesta: str
     chunks: list[dict]
+    proyecto_slug: str | None = None
 
 
 class SessionCreateResponse(BaseModel):
@@ -83,3 +100,4 @@ class IndexStatsOut(BaseModel):
     chunks_en_catalogo: int
     huerfanos_chunks: int
     huerfanos: list[FuenteIndexada]
+    tenant: str | None = None

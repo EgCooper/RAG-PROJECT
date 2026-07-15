@@ -24,6 +24,10 @@ import unicodedata
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+from config.proyectos import DEFAULT_PROYECTO_SLUG
+from src.db.bootstrap import inicializar_db
+from src.db.engine import SessionLocal
+from src.db import projects_repository as proy_repo
 from src.rag.pipeline import RAGPipeline
 from src.llm.prompt import _NO_INFO_RESPONSE
 
@@ -141,6 +145,11 @@ def parse_args():
     p.add_argument("--limit", type=int, help="Correr solo las primeras N preguntas")
     p.add_argument("--out", default="eval/report.json", help="Ruta del reporte JSON")
     p.add_argument("--quiet", action="store_true", help="No imprimir cada respuesta completa")
+    p.add_argument(
+        "--proyecto",
+        default=DEFAULT_PROYECTO_SLUG,
+        help=f"Slug del proyecto a evaluar (default: {DEFAULT_PROYECTO_SLUG})",
+    )
     return p.parse_args()
 
 
@@ -167,32 +176,43 @@ def main():
         print("No hay preguntas que coincidan con el filtro.")
         sys.exit(0)
 
-    print(f"\nEvaluando {len(items)} preguntas...\n")
+    inicializar_db()
+    with SessionLocal() as db:
+        proy = proy_repo.obtener_por_slug(db, args.proyecto)
+        if not proy or not proy.activo:
+            print(f"ERROR: proyecto '{args.proyecto}' no encontrado o inactivo")
+            sys.exit(1)
+        slug = proy.slug
+
+    print(f"\nEvaluando {len(items)} preguntas en proyecto '{slug}'...\n")
     pipeline = RAGPipeline()
+    pipeline.asegurar_tenant_proyecto(slug)
     resultados = []
 
     try:
-        for i, item in enumerate(items, 1):
-            pregunta = item["pregunta"]
-            respuesta, chunks = pipeline.consultar(pregunta)
-            r = evaluar_item(item, respuesta, chunks)
-            resultados.append(r)
+        with SessionLocal() as db:
+            for i, item in enumerate(items, 1):
+                pregunta = item["pregunta"]
+                proyecto = proy_repo.obtener_por_slug(db, slug)
+                respuesta, chunks = pipeline.consultar(pregunta, proyecto)
+                r = evaluar_item(item, respuesta, chunks)
+                resultados.append(r)
 
-            estado = "PASS" if r["respuesta_ok"] and not r["problemas_formato"] else "FAIL"
-            print(f"[{i}/{len(items)}] {estado}  {r['id']}  ({r['regla']})")
-            print(f"    Q: {pregunta}")
-            if not args.quiet:
-                print(f"    R: {r['respuesta'][:300]}")
-            if estado == "FAIL":
-                if r["diagnostico"] != "OK":
-                    print(f"    -> {r['diagnostico']}")
-                if r["resp_faltantes"]:
-                    print(f"    -> faltan en respuesta: {r['resp_faltantes']}")
-                if r["recuperacion_ok"] is False:
-                    print(f"    -> faltan en chunks: {r['ctx_faltantes']}")
-                for pf in r["problemas_formato"]:
-                    print(f"    -> formato: {pf}")
-            print()
+                estado = "PASS" if r["respuesta_ok"] and not r["problemas_formato"] else "FAIL"
+                print(f"[{i}/{len(items)}] {estado}  {r['id']}  ({r['regla']})")
+                print(f"    Q: {pregunta}")
+                if not args.quiet:
+                    print(f"    R: {r['respuesta'][:300]}")
+                if estado == "FAIL":
+                    if r["diagnostico"] != "OK":
+                        print(f"    -> {r['diagnostico']}")
+                    if r["resp_faltantes"]:
+                        print(f"    -> faltan en respuesta: {r['resp_faltantes']}")
+                    if r["recuperacion_ok"] is False:
+                        print(f"    -> faltan en chunks: {r['ctx_faltantes']}")
+                    for pf in r["problemas_formato"]:
+                        print(f"    -> formato: {pf}")
+                print()
     finally:
         pipeline.cerrar()
 
