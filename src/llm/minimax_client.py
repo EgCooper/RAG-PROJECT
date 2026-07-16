@@ -30,3 +30,26 @@ def generar_respuesta(client, system_prompt, prompt_usuario):
     )
 
     return respuesta.choices[0].message.content
+
+
+def generar_respuesta_stream(client, system_prompt, prompt_usuario):
+    """Genera tokens de la respuesta (sync iterator)."""
+    stream = client.chat.completions.create(
+        model=MINIMAX_LLM_MODEL,
+        messages=[
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": prompt_usuario},
+        ],
+        temperature=TEMPERATURE,
+        max_tokens=MAX_TOKENS,
+        top_p=TOP_P,
+        stream=True,
+    )
+    for evento in stream:
+        try:
+            delta = evento.choices[0].delta
+            texto = getattr(delta, "content", None) or ""
+        except (IndexError, AttributeError):
+            continue
+        if texto:
+            yield texto

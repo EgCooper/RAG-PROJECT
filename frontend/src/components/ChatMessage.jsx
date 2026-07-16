@@ -6,10 +6,14 @@ import { formatearRespuesta } from "../utils/formatRespuesta";
 
 export default function ChatMessage({ mensaje }) {
   const esUsuario = mensaje.rol === "user";
-  const contenido = esUsuario ? mensaje.texto : formatearRespuesta(mensaje.texto);
+  const streaming = Boolean(mensaje.streaming);
+  const texto = mensaje.texto || "";
+  const contenido = esUsuario ? texto : formatearRespuesta(texto);
 
   return (
-    <article className={`message ${esUsuario ? "message--user" : "message--bot"}`}>
+    <article
+      className={`message ${esUsuario ? "message--user" : "message--bot"}${streaming ? " message--streaming" : ""}`}
+    >
       <div className="message-avatar" aria-hidden>
         {esUsuario ? <IconUser /> : <IconBot />}
       </div>
@@ -17,11 +21,20 @@ export default function ChatMessage({ mensaje }) {
         <div className={`message-content ${esUsuario ? "" : "message-content--prose"}`}>
           {esUsuario ? (
             contenido
+          ) : texto ? (
+            <>
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>{contenido}</ReactMarkdown>
+              {streaming && <span className="stream-cursor" aria-hidden />}
+            </>
           ) : (
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>{contenido}</ReactMarkdown>
+            streaming && (
+              <span className="stream-waiting" aria-live="polite">
+                Generando respuesta…
+              </span>
+            )
           )}
         </div>
-        {!esUsuario && mensaje.chunks?.length > 0 && (
+        {!esUsuario && !streaming && mensaje.chunks?.length > 0 && (
           <SourcePanel chunks={mensaje.chunks} />
         )}
       </div>

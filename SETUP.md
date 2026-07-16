@@ -18,7 +18,8 @@ El asistente aísla **chats**, **documentos** e **índice Weaviate** por proyect
 | slug | Nombre | Notas |
 |------|--------|--------|
 | `ach` | ACH | Default; tablas ACH / prompt ACH |
-| `feel-banca` | FEEL BANCA | Corpus propio |
+| `feel` | FEEL | Corpus propio |
+| `banca` | BANCA | Corpus propio |
 
 - UI: selector en el sidebar.
 - API: header `X-Proyecto-Slug: ach`.
@@ -52,7 +53,8 @@ python scripts/health_check.py --skip-llm
 
 ```powershell
 python scripts/index_documents.py --proyecto ach --todos
-python scripts/index_documents.py --proyecto feel-banca --todos
+python scripts/index_documents.py --proyecto feel --todos
+python scripts/index_documents.py --proyecto banca --todos
 python scripts/index_documents.py --proyecto ach --archivo manual.pdf --forzar
 ```
 

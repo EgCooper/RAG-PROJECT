@@ -5,6 +5,7 @@ from config.proyectos import DEFAULT_PROYECTO_SLUG
 from src.db.engine import Base, SessionLocal, engine
 from src.db import repository
 from src.db import projects_repository as proy_repo
+from src.db import documents_repository as doc_repo
 from src.db.models import ChatSession, Document
 
 
@@ -70,6 +71,7 @@ def _backfill_proyecto_id(db) -> None:
 def inicializar_db():
     Base.metadata.create_all(bind=engine)
     proy_repo.migrar_schema_proyectos(engine)
+    doc_repo.migrar_schema_documentos(engine)
 
     with SessionLocal() as db:
         repository.obtener_o_crear_usuario_default(db)

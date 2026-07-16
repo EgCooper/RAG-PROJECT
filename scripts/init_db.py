@@ -17,7 +17,7 @@ def main():
         sys.exit(1)
 
     inicializar_db()
-    print("Tablas, proyectos (ACH / FEEL BANCA) y usuario default listos.")
+    print("Tablas, proyectos (ACH / FEEL / BANCA) y usuario default listos.")
 
 
 if __name__ == "__main__":

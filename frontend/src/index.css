@@ -96,11 +96,10 @@ textarea {
   color: var(--text-on-dark);
   display: flex;
   flex-direction: column;
-  padding: 1rem;
+  padding: 0.85rem 0.85rem 1rem;
   transform: translateX(-100%);
   transition: transform 0.25s ease, width 0.25s ease, padding 0.25s ease, opacity 0.2s ease;
-  overflow-y: auto;
-  overflow-x: hidden;
+  overflow: hidden;
   flex-shrink: 0;
 }
 
@@ -119,7 +118,8 @@ textarea {
   align-items: flex-start;
   justify-content: space-between;
   gap: 0.5rem;
-  margin-bottom: 1.25rem;
+  margin-bottom: 0.75rem;
+  flex-shrink: 0;
 }
 
 .project-picker {
@@ -317,13 +317,14 @@ textarea {
   justify-content: center;
   gap: 0.5rem;
   width: 100%;
-  padding: 0.7rem 1rem;
-  margin-bottom: 1.5rem;
+  padding: 0.65rem 0.85rem;
+  margin: 0;
+  flex-shrink: 0;
   background: var(--bg-sidebar-hover);
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: var(--radius);
   color: var(--text-on-dark);
-  font-size: 0.9rem;
+  font-size: 0.875rem;
   font-weight: 500;
   cursor: pointer;
   transition: background 0.15s;
@@ -341,21 +342,22 @@ textarea {
 .sidebar-nav {
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
-  margin-bottom: 1rem;
+  gap: 0.2rem;
+  margin-bottom: 0.75rem;
+  flex-shrink: 0;
 }
 
 .sidebar-nav-item {
   display: flex;
   align-items: center;
-  gap: 0.6rem;
+  gap: 0.55rem;
   width: 100%;
-  padding: 0.65rem 0.75rem;
+  padding: 0.5rem 0.65rem;
   background: transparent;
   border: none;
   border-radius: var(--radius);
   color: var(--text-on-dark-muted);
-  font-size: 0.9rem;
+  font-size: 0.84rem;
   font-weight: 500;
   cursor: pointer;
   text-align: left;
@@ -373,12 +375,21 @@ textarea {
   box-shadow: inset 3px 0 0 var(--accent);
 }
 
+.sidebar-chat {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
 .session-list-wrap {
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
   min-height: 0;
-  margin-bottom: 1rem;
+  margin: 0;
+  padding-right: 0.15rem;
 }
 
 /* ── Custom scrollbars ── */
@@ -498,8 +509,10 @@ textarea {
   display: flex;
   align-items: stretch;
   width: 100%;
-  padding: 0.65rem 0.75rem;
-  padding-right: 2.35rem;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: 0.55rem 0.65rem;
+  padding-right: 2.2rem;
   gap: 0;
   border-radius: var(--radius);
   position: relative;
@@ -649,16 +662,18 @@ textarea {
 }
 
 .session-item-title {
-  font-size: 0.85rem;
+  display: block;
+  width: 100%;
+  font-size: 0.84rem;
   font-weight: 500;
   line-height: 1.35;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  max-width: 100%;
 }
 
 .session-item-date {
+  display: block;
   font-size: 0.7rem;
   color: var(--text-on-dark-muted);
 }
@@ -848,6 +863,7 @@ textarea {
   flex: 1;
   min-width: 0;
   max-width: min(100%, 640px);
+  overflow: hidden;
 }
 
 .message--user .message-body {
@@ -861,11 +877,14 @@ textarea {
 }
 
 .message-content {
+  box-sizing: border-box;
+  max-width: 100%;
   padding: 0.85rem 1rem;
   border-radius: var(--radius);
   font-size: 0.95rem;
   line-height: 1.55;
   white-space: pre-wrap;
+  overflow-wrap: anywhere;
   word-break: break-word;
 }
 
@@ -876,10 +895,12 @@ textarea {
 }
 
 .message--bot .message-content {
+  width: 100%;
   background: var(--bg-surface);
   border: 1px solid var(--border);
   border-bottom-left-radius: 4px;
   box-shadow: var(--shadow-sm);
+  overflow-x: auto;
 }
 
 .message-content--prose {
@@ -929,16 +950,42 @@ textarea {
   font-weight: 650;
 }
 
+.message-content--prose a {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
 .message-content--prose code {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 0.86em;
   background: #f1f5f9;
   padding: 0.1rem 0.35rem;
   border-radius: 4px;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.message-content--prose pre {
+  max-width: 100%;
+  margin: 0.35rem 0 0.75rem;
+  padding: 0.75rem 0.85rem;
+  overflow-x: auto;
+  background: #f1f5f9;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  white-space: pre;
+}
+
+.message-content--prose pre code {
+  padding: 0;
+  background: transparent;
+  white-space: inherit;
 }
 
 .message-content--prose table {
-  width: 100%;
+  width: max-content;
+  max-width: 100%;
+  box-sizing: border-box;
   border-collapse: collapse;
   margin: 0.35rem 0 0.75rem;
   font-size: 0.88rem;
@@ -958,6 +1005,8 @@ textarea {
   padding: 0.45rem 0.65rem;
   text-align: left;
   vertical-align: top;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .message-content--prose th {
@@ -1055,6 +1104,29 @@ textarea {
 /* Typing */
 .message--typing .message-avatar {
   background: var(--accent-soft);
+}
+
+.message--streaming .message-content--prose {
+  min-height: 1.4em;
+}
+
+.stream-cursor {
+  display: inline-block;
+  width: 0.45em;
+  height: 1.05em;
+  margin-left: 2px;
+  vertical-align: text-bottom;
+  background: var(--accent, #0d9488);
+  animation: stream-blink 0.9s step-end infinite;
+}
+
+.stream-waiting {
+  color: var(--text-secondary, #64748b);
+  font-size: 0.92rem;
+}
+
+@keyframes stream-blink {
+  50% { opacity: 0; }
 }
 
 .pulse-dot {
@@ -1193,6 +1265,29 @@ textarea {
   align-items: center;
   gap: 0.5rem;
   flex-wrap: wrap;
+}
+
+.documents-seccion-label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+  font-weight: 550;
+}
+
+.documents-seccion-label select,
+.documents-seccion-select {
+  font-size: 0.82rem;
+  padding: 0.35rem 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-surface);
+  color: var(--text-primary);
+}
+
+.documents-seccion-select {
+  min-width: 7.5rem;
 }
 
 .btn-danger-outline {
@@ -1708,9 +1803,122 @@ textarea {
   background: linear-gradient(to top, var(--bg-app) 70%, transparent);
 }
 
-.composer {
+.composer-panel {
   max-width: 780px;
   margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.chat-scope {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.chat-scope-modes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.chat-scope-chip {
+  border: 1px solid var(--border);
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+  font-weight: 550;
+  padding: 0.28rem 0.65rem;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.chat-scope-chip:hover:not(:disabled) {
+  border-color: var(--border-strong);
+  color: var(--text-primary);
+}
+
+.chat-scope-chip--active {
+  background: var(--accent-soft);
+  border-color: #99f6e4;
+  color: var(--accent-hover);
+}
+
+.chat-scope-chip:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.chat-scope-docs {
+  position: relative;
+}
+
+.chat-scope-docs-btn {
+  width: 100%;
+  text-align: left;
+  border: 1px solid var(--border);
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  padding: 0.4rem 0.65rem;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.chat-scope-docs-btn:hover:not(:disabled) {
+  border-color: var(--border-strong);
+  color: var(--text-primary);
+}
+
+.chat-scope-docs-list {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(100% + 4px);
+  z-index: 20;
+  margin: 0;
+  padding: 0.35rem;
+  list-style: none;
+  max-height: 220px;
+  overflow-y: auto;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+  box-shadow: var(--shadow-md);
+}
+
+.chat-scope-docs-item {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.35rem 0.4rem;
+  border-radius: 6px;
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+
+.chat-scope-docs-item:hover {
+  background: #f1f5f9;
+}
+
+.chat-scope-docs-item span {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chat-scope-docs-item em {
+  font-style: normal;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.composer {
   display: flex;
   align-items: flex-end;
   gap: 0.5rem;

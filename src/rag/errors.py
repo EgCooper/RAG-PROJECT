@@ -14,6 +14,12 @@ MENSAJE_INDICE_VACIO = (
     "para que el asistente pueda responder."
 )
 
+MENSAJE_FILTRO_SIN_DOCS = (
+    "No hay documentos indexados que coincidan con el filtro elegido "
+    "(Documentos o Informes). "
+    "Cambiá el filtro o subí archivos en la pestaña correspondiente."
+)
+
 MENSAJE_INDICE_NO_DISPONIBLE = (
     "El índice de documentos no está disponible. Verificá que Weaviate esté "
     "corriendo (docker compose up) y volvé a subir tus documentos."

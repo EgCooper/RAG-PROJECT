@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import {
-  enviarPregunta,
+  enviarPreguntaStream,
   crearSesion,
   eliminarSesion,
   eliminarTodasSesiones,
@@ -12,6 +12,7 @@ import {
 } from "./api";
 import Sidebar from "./components/Sidebar";
 import ChatMessage from "./components/ChatMessage";
+import ChatScopeFilter from "./components/ChatScopeFilter";
 import ConfirmDialog from "./components/ConfirmDialog";
 import DocumentsView from "./components/DocumentsView";
 import TypingIndicator from "./components/TypingIndicator";
@@ -53,6 +54,7 @@ export default function App() {
   const [proyectos, setProyectos] = useState([]);
   const [proyectoSlug, setProyectoSlugState] = useState(getProyectoSlug);
   const [docsKey, setDocsKey] = useState(0);
+  const [filtroModo, setFiltroModo] = useState("todos");
   const [esDesktop, setEsDesktop] = useState(
     () => window.matchMedia("(min-width: 900px)").matches
   );
@@ -94,12 +96,12 @@ export default function App() {
       setCargandoSesiones(true);
       setSessionId(null);
       setMensajes([]);
+      setFiltroModo("todos");
       await recargarSesiones();
       setCargandoSesiones(false);
       setDocsKey((k) => k + 1);
     })();
   }, [proyectoSlug, recargarSesiones]);
-
   async function handleCambiarProyecto(slug) {
     if (!slug || slug === proyectoSlug) return;
     setProyectoSlug(slug);
@@ -119,7 +121,6 @@ export default function App() {
       /* ignore */
     }
   }, [sidebarOculto]);
-
   useEffect(() => {
     const mq = window.matchMedia("(min-width: 900px)");
     const handler = (e) => {
@@ -174,32 +175,78 @@ export default function App() {
       const texto = pregunta.trim();
       if (!texto || cargando) return;
 
+      const filtro = { modo: filtroModo };
+
       setInput("");
       setError("");
       setSidebarAbierto(false);
-      setMensajes((prev) => [...prev, { rol: "user", texto }]);
+      setMensajes((prev) => [
+        ...prev,
+        { rol: "user", texto },
+        { rol: "assistant", texto: "", chunks: [], streaming: true },
+      ]);
       setCargando(true);
 
       try {
-        const data = await enviarPregunta(texto, sessionId);
-        if (!sessionId) setSessionId(data.session_id);
-        setMensajes((prev) => [
-          ...prev,
-          {
-            rol: "assistant",
-            texto: data.respuesta,
-            chunks: data.chunks || [],
+        await enviarPreguntaStream(
+          texto,
+          sessionId,
+          (evento) => {
+            if (evento.type === "meta" && evento.session_id) {
+              setSessionId(evento.session_id);
+            }
+            if (evento.type === "token" && evento.text) {
+              setMensajes((prev) => {
+                const copia = [...prev];
+                const ultimo = copia[copia.length - 1];
+                if (ultimo?.rol === "assistant") {
+                  copia[copia.length - 1] = {
+                    ...ultimo,
+                    texto: (ultimo.texto || "") + evento.text,
+                    streaming: true,
+                  };
+                }
+                return copia;
+              });
+            }
+            if (evento.type === "done") {
+              if (evento.session_id) setSessionId(evento.session_id);
+              setMensajes((prev) => {
+                const copia = [...prev];
+                const ultimo = copia[copia.length - 1];
+                if (ultimo?.rol === "assistant") {
+                  copia[copia.length - 1] = {
+                    rol: "assistant",
+                    texto: evento.respuesta ?? ultimo.texto,
+                    chunks: evento.chunks || [],
+                    streaming: false,
+                  };
+                }
+                return copia;
+              });
+            }
           },
-        ]);
+          filtro
+        );
         await recargarSesiones();
       } catch (err) {
         setError(err.message);
+        setMensajes((prev) => {
+          const copia = [...prev];
+          const ultimo = copia[copia.length - 1];
+          if (ultimo?.rol === "assistant" && ultimo.streaming && !ultimo.texto) {
+            copia.pop();
+          } else if (ultimo?.rol === "assistant") {
+            copia[copia.length - 1] = { ...ultimo, streaming: false };
+          }
+          return copia;
+        });
       } finally {
         setCargando(false);
         inputRef.current?.focus();
       }
     },
-    [cargando, sessionId, recargarSesiones]
+    [cargando, sessionId, recargarSesiones, filtroModo]
   );
 
   async function handleNueva() {
@@ -310,7 +357,9 @@ export default function App() {
             <span className="topbar-sub">
               {vista === "chat"
                 ? "Consultas sobre documentación indexada"
-                : "Gestión de documentos del índice"}
+                : vista === "informes"
+                  ? "Gestión de informes del índice"
+                  : "Gestión de documentos del índice"}
             </span>
           </div>
           {vista === "chat" && (
@@ -329,7 +378,11 @@ export default function App() {
 
         {vista === "documents" ? (
           <main className="documents-main">
-            <DocumentsView key={docsKey} />
+            <DocumentsView key={`docs-${docsKey}`} seccion="manual" />
+          </main>
+        ) : vista === "informes" ? (
+          <main className="documents-main">
+            <DocumentsView key={`informes-${docsKey}`} seccion="informe" />
           </main>
         ) : (
           <>
@@ -351,7 +404,7 @@ export default function App() {
             {mensajes.map((m, i) => (
               <ChatMessage key={i} mensaje={m} />
             ))}
-            {cargando && <TypingIndicator />}
+            {cargando && !mensajes.some((m) => m.streaming) && <TypingIndicator />}
             {error && (
               <div className="alert alert--error" role="alert">
                 {error}
@@ -362,32 +415,39 @@ export default function App() {
         </main>
 
         <footer className="composer-wrap">
-          <form className="composer" onSubmit={handleSubmit}>
-            <textarea
-              ref={inputRef}
-              rows={1}
-              placeholder="Escribe tu pregunta… (Enter para enviar)"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault();
-                  handleSubmit(e);
-                }
-              }}
+          <div className="composer-panel">
+            <ChatScopeFilter
+              modo={filtroModo}
+              onCambiarModo={setFiltroModo}
               disabled={cargando}
-              aria-label="Pregunta"
             />
-            <button
-              type="submit"
-              className="btn-send"
-              disabled={cargando || !input.trim()}
-              aria-label="Enviar"
-            >
-              <IconSend />
-            </button>
-          </form>
-          <p className="composer-hint">Enter para enviar</p>
+            <form className="composer" onSubmit={handleSubmit}>
+              <textarea
+                ref={inputRef}
+                rows={1}
+                placeholder="Escribe tu pregunta… (Enter para enviar)"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSubmit(e);
+                  }
+                }}
+                disabled={cargando}
+                aria-label="Pregunta"
+              />
+              <button
+                type="submit"
+                className="btn-send"
+                disabled={cargando || !input.trim()}
+                aria-label="Enviar"
+              >
+                <IconSend />
+              </button>
+            </form>
+          </div>
+          <p className="composer-hint">Enter para enviar · Todos, Documentos o Informes</p>
         </footer>
           </>
         )}

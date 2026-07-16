@@ -6,7 +6,11 @@ import uuid
 from sqlalchemy import select, text
 from sqlalchemy.orm import Session
 
-from config.proyectos import DEFAULT_PROYECTO_SLUG, PROYECTOS_SEED
+from config.proyectos import (
+    DEFAULT_PROYECTO_SLUG,
+    PROYECTOS_OBSOLETOS,
+    PROYECTOS_SEED,
+)
 from src.db.models import Proyecto
 
 _SLUG_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
@@ -59,7 +63,7 @@ def crear_proyecto(
     slug_final = (slug or slugify(nombre)).lower().strip()
     if not _SLUG_RE.match(slug_final):
         raise ValueError(
-            "Slug inválido. Usá minúsculas, números y guiones (ej: feel-banca)."
+            "Slug inválido. Usá minúsculas, números y guiones (ej: ach, feel, banca)."
         )
     if obtener_por_slug(db, slug_final):
         raise ValueError(f"Ya existe un proyecto con slug '{slug_final}'")
@@ -82,6 +86,11 @@ def seed_proyectos(db: Session) -> list[Proyecto]:
     for data in PROYECTOS_SEED:
         existente = obtener_por_slug(db, data["slug"])
         if existente:
+            # Asegura nombres/config actuales y que quede activo
+            existente.nombre = data["nombre"]
+            existente.descripcion = data.get("descripcion", "")
+            existente.config = data.get("config")
+            existente.activo = True
             creados.append(existente)
             continue
         proy = Proyecto(
@@ -94,6 +103,12 @@ def seed_proyectos(db: Session) -> list[Proyecto]:
         )
         db.add(proy)
         creados.append(proy)
+
+    for slug in PROYECTOS_OBSOLETOS:
+        viejo = obtener_por_slug(db, slug)
+        if viejo and viejo.activo:
+            viejo.activo = False
+
     db.commit()
     for p in creados:
         db.refresh(p)

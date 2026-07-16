@@ -7,6 +7,7 @@ import {
   IconFolder,
   IconMore,
   IconPlus,
+  IconReport,
   IconTrash,
 } from "./Icons";
 
@@ -31,8 +32,8 @@ function iniciales(nombre) {
 function tonoProyecto(slug) {
   const s = (slug || "").toLowerCase();
   if (s === "ach") return "ach";
-  if (s.includes("feel")) return "feel"; // feel-banca → azul
-  if (s === "banca" || s.includes("banca")) return "banca"; // morado
+  if (s === "feel") return "feel";
+  if (s === "banca") return "banca";
   return "default";
 }
 
@@ -130,9 +131,6 @@ export default function Sidebar({
                 <span className="project-picker-name">
                   {proyectoActivo?.nombre || "Sin proyecto"}
                 </span>
-                {proyectoActivo?.descripcion && (
-                  <span className="project-picker-desc">{proyectoActivo.descripcion}</span>
-                )}
               </span>
               <span className="project-picker-chevron" aria-hidden>
                 <IconChevronDown />
@@ -202,93 +200,103 @@ export default function Sidebar({
             <IconFolder />
             Documentos
           </button>
+          <button
+            type="button"
+            className={`sidebar-nav-item ${vista === "informes" ? "sidebar-nav-item--active" : ""}`}
+            onClick={() => onCambiarVista("informes")}
+          >
+            <IconReport />
+            Informes
+          </button>
         </nav>
 
         {vista === "chat" && (
-          <button
-            type="button"
-            className="btn-new-chat"
-            onClick={onNueva}
-            disabled={deshabilitado || nuevaDeshabilitada}
-            title={nuevaDeshabilitada ? "Ya tenés una conversación vacía abierta" : "Nueva conversación"}
-          >
-            <IconPlus />
-            Nueva conversación
-          </button>
-        )}
+          <div className="sidebar-chat">
+            <button
+              type="button"
+              className="btn-new-chat"
+              onClick={onNueva}
+              disabled={deshabilitado || nuevaDeshabilitada}
+              title={nuevaDeshabilitada ? "Ya tenés una conversación vacía abierta" : "Nueva conversación"}
+            >
+              <IconPlus />
+              Nueva conversación
+            </button>
 
-        {vista === "chat" && (
-          <div className="session-list-wrap custom-scroll custom-scroll--dark">
-            <div className="session-list-header">
-              <p className="session-list-label">Conversaciones</p>
-              {sesiones.length > 0 && (
-                <button
-                  type="button"
-                  className="session-list-clear"
-                  onClick={onSolicitarEliminarTodas}
-                  disabled={deshabilitado || eliminandoTodasSesiones}
-                  title="Borrar todas las conversaciones"
-                  aria-label="Borrar todas las conversaciones"
-                >
-                  <IconTrash />
-                </button>
-              )}
-            </div>
-            {cargandoSesiones && <p className="session-list-empty">Cargando…</p>}
-            {!cargandoSesiones && sesiones.length === 0 && (
-              <p className="session-list-empty">No hay conversaciones aún</p>
-            )}
-            <ul className="session-list">
-              {sesiones.map((s) => {
-                const activa = s.id === sessionIdActiva;
-                return (
-                  <li
-                    key={s.id}
-                    className={`session-row ${activa ? "session-row--active" : ""}`}
+            <div className="session-list-wrap custom-scroll custom-scroll--dark">
+              <div className="session-list-header">
+                <p className="session-list-label">Conversaciones</p>
+                {sesiones.length > 0 && (
+                  <button
+                    type="button"
+                    className="session-list-clear"
+                    onClick={onSolicitarEliminarTodas}
+                    disabled={deshabilitado || eliminandoTodasSesiones}
+                    title="Borrar todas las conversaciones"
+                    aria-label="Borrar todas las conversaciones"
                   >
-                    <button
-                      type="button"
-                      className="session-item"
-                      onClick={() => onSeleccionar(s.id)}
-                      disabled={deshabilitado}
-                    >
-                      <span className="session-item-title">{s.titulo}</span>
-                      <span className="session-item-date">
-                        {formatearFecha(s.actualizado_en)}
-                      </span>
-                    </button>
-                    <div
-                      className="session-row-menu"
-                      ref={menuAbiertoId === s.id ? menuRef : null}
+                    <IconTrash />
+                  </button>
+                )}
+              </div>
+              {cargandoSesiones && <p className="session-list-empty">Cargando…</p>}
+              {!cargandoSesiones && sesiones.length === 0 && (
+                <p className="session-list-empty">No hay conversaciones aún</p>
+              )}
+              <ul className="session-list">
+                {sesiones.map((s) => {
+                  const activa = s.id === sessionIdActiva;
+                  return (
+                    <li
+                      key={s.id}
+                      className={`session-row ${activa ? "session-row--active" : ""}`}
                     >
                       <button
                         type="button"
-                        className={`session-menu-trigger ${menuAbiertoId === s.id ? "session-menu-trigger--open" : ""}`}
-                        onClick={(e) => toggleMenu(s.id, e)}
-                        disabled={deshabilitado || eliminandoSesionId === s.id}
-                        aria-label={`Opciones de ${s.titulo}`}
-                        aria-expanded={menuAbiertoId === s.id}
+                        className="session-item"
+                        onClick={() => onSeleccionar(s.id)}
+                        disabled={deshabilitado}
                       >
-                        <IconMore />
+                        <span className="session-item-title" title={s.titulo}>
+                          {s.titulo}
+                        </span>
+                        <span className="session-item-date">
+                          {formatearFecha(s.actualizado_en)}
+                        </span>
                       </button>
-                      {menuAbiertoId === s.id && (
-                        <div className="session-menu-dropdown" role="menu">
-                          <button
-                            type="button"
-                            className="session-menu-item session-menu-item--danger"
-                            role="menuitem"
-                            onClick={(e) => handleEliminar(s, e)}
-                          >
-                            <IconTrash />
-                            Eliminar
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
+                      <div
+                        className="session-row-menu"
+                        ref={menuAbiertoId === s.id ? menuRef : null}
+                      >
+                        <button
+                          type="button"
+                          className={`session-menu-trigger ${menuAbiertoId === s.id ? "session-menu-trigger--open" : ""}`}
+                          onClick={(e) => toggleMenu(s.id, e)}
+                          disabled={deshabilitado || eliminandoSesionId === s.id}
+                          aria-label={`Opciones de ${s.titulo}`}
+                          aria-expanded={menuAbiertoId === s.id}
+                        >
+                          <IconMore />
+                        </button>
+                        {menuAbiertoId === s.id && (
+                          <div className="session-menu-dropdown" role="menu">
+                            <button
+                              type="button"
+                              className="session-menu-item session-menu-item--danger"
+                              role="menuitem"
+                              onClick={(e) => handleEliminar(s, e)}
+                            >
+                              <IconTrash />
+                              Eliminar
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
           </div>
         )}
       </aside>

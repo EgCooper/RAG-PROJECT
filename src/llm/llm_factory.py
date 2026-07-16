@@ -23,5 +23,13 @@ def generar_respuesta(client, system_prompt, prompt_usuario):
     return _generar(client, system_prompt, prompt_usuario)
 
 
+def generar_respuesta_stream(client, system_prompt, prompt_usuario):
+    if LLM_PROVIDER == "minimax":
+        from src.llm.minimax_client import generar_respuesta_stream as _stream
+    else:
+        from src.llm.groq_client import generar_respuesta_stream as _stream
+    return _stream(client, system_prompt, prompt_usuario)
+
+
 def info_proveedor():
     return f"{LLM_PROVIDER} ({_modelo_activo()})"

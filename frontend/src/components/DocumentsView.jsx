@@ -14,6 +14,27 @@ const EXTENSIONES = [".pdf", ".csv", ".docx", ".md", ".ppt", ".pptx"];
 const MAX_ARCHIVOS_DEFAULT = 100;
 const POLL_MS = 2500;
 
+const SECCION_COPY = {
+  manual: {
+    titulo: "Documentos del índice",
+    subtitulo:
+      "Manuales, guías y documentación técnica. PDFs, CSV, DOCX, Markdown y PPT/PPTX.",
+    vacio: "No hay documentos indexados.",
+    vacioSub: "Subí manuales y guías para que el asistente pueda responder.",
+    eliminarTodos: "Eliminar todos los documentos",
+    confirmEliminarTodos: "Se borrarán todos los documentos de esta pestaña.",
+  },
+  informe: {
+    titulo: "Informes del índice",
+    subtitulo:
+      "Informes de corrida, estado y resultados. PDFs, CSV, DOCX, Markdown y PPT/PPTX.",
+    vacio: "No hay informes indexados.",
+    vacioSub: "Subí informes para consultarlos desde el chat con filtro Informes.",
+    eliminarTodos: "Eliminar todos los informes",
+    confirmEliminarTodos: "Se borrarán todos los informes de esta pestaña.",
+  },
+};
+
 function extensionDe(nombre) {
   const i = nombre.lastIndexOf(".");
   return i >= 0 ? nombre.slice(i).toLowerCase() : "";
@@ -71,7 +92,8 @@ function ordenPendientes(a, b) {
   return new Date(a.creado_en) - new Date(b.creado_en);
 }
 
-export default function DocumentsView() {
+export default function DocumentsView({ seccion = "manual" }) {
+  const copy = SECCION_COPY[seccion] || SECCION_COPY.manual;
   const [documentos, setDocumentos] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [subiendoArchivos, setSubiendoArchivos] = useState(false);
@@ -99,7 +121,7 @@ export default function DocumentsView() {
     setCargando(true);
     setError("");
     try {
-      const lista = await listarDocumentos();
+      const lista = await listarDocumentos(seccion);
       setDocumentos(lista);
       await recargarStats();
     } catch (err) {
@@ -107,17 +129,17 @@ export default function DocumentsView() {
     } finally {
       setCargando(false);
     }
-  }, [recargarStats]);
+  }, [recargarStats, seccion]);
 
   const recargarSilencioso = useCallback(async () => {
     try {
-      const lista = await listarDocumentos();
+      const lista = await listarDocumentos(seccion);
       setDocumentos(lista);
       await recargarStats();
     } catch {
       // Polling silencioso: no pisar errores visibles del usuario
     }
-  }, [recargarStats]);
+  }, [recargarStats, seccion]);
 
   useEffect(() => {
     recargar();
@@ -188,7 +210,7 @@ export default function DocumentsView() {
     const resultados = await Promise.allSettled(
       validos.map(async (item) => {
         try {
-          const data = await subirDocumento(item.archivo);
+          const data = await subirDocumento(item.archivo, seccion);
           actualizarItemCola(item.nombre, {
             estado: "subido",
             mensaje: data.mensaje,
@@ -247,13 +269,14 @@ export default function DocumentsView() {
     setError("");
     setMensaje("");
     try {
-      const data = await eliminarTodosDocumentos();
+      const data = await eliminarTodosDocumentos(seccion);
       setConfirmarEliminarTodos(false);
       setColaSubida([]);
+      const etiqueta = seccion === "informe" ? "informe" : "documento";
       setMensaje(
         data.eliminados
-          ? `${data.eliminados} documento${data.eliminados === 1 ? "" : "s"} eliminado${data.eliminados === 1 ? "" : "s"}`
-          : "No había documentos para eliminar"
+          ? `${data.eliminados} ${etiqueta}${data.eliminados === 1 ? "" : "s"} eliminado${data.eliminados === 1 ? "" : "s"}`
+          : `No había ${seccion === "informe" ? "informes" : "documentos"} para eliminar`
       );
       await recargarSilencioso();
     } catch (err) {
@@ -267,10 +290,8 @@ export default function DocumentsView() {
     <div className="documents-view">
       <div className="documents-toolbar">
         <div>
-          <h2>Documentos del índice</h2>
-          <p className="documents-sub">
-            PDFs, CSV, DOCX, Markdown y presentaciones (PPT/PPTX) que el asistente usa para responder. Podés subir varios archivos a la vez.
-          </p>
+          <h2>{copy.titulo}</h2>
+          <p className="documents-sub">{copy.subtitulo}</p>
           {indexStats && (
             <div className="documents-index-stats" role="status">
               <span>
@@ -399,8 +420,8 @@ export default function DocumentsView() {
       ) : documentos.length === 0 ? (
         <div className="documents-empty-card">
           <IconDoc />
-          <p>No hay documentos indexados.</p>
-          <p className="documents-sub">Subí PDFs, CSV, DOCX, Markdown o PPT/PPTX para empezar.</p>
+          <p>{copy.vacio}</p>
+          <p className="documents-sub">{copy.vacioSub}</p>
         </div>
       ) : (
         <div className="documents-table-wrap">
@@ -464,7 +485,7 @@ export default function DocumentsView() {
             disabled={ocupado}
           >
             <IconTrash />
-            Eliminar todos
+            {copy.eliminarTodos}
           </button>
         </div>
       )}
@@ -484,9 +505,9 @@ export default function DocumentsView() {
 
       <ConfirmDialog
         open={confirmarEliminarTodos}
-        title="Eliminar todos los documentos"
-        detail={`${documentos.length} documento${documentos.length === 1 ? "" : "s"}`}
-        message="Se borrarán todos los archivos del índice vectorial y del catálogo, incluidos los que estén en cola o indexándose. Esta acción no se puede deshacer."
+        title={copy.eliminarTodos}
+        detail={`${documentos.length} archivo${documentos.length === 1 ? "" : "s"}`}
+        message={`${copy.confirmEliminarTodos} Esta acción no se puede deshacer.`}
         confirmLabel="Eliminar todos"
         cancelLabel="Cancelar"
         variant="danger"

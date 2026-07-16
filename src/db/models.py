@@ -91,6 +91,7 @@ class Document(Base):
     ruta: Mapped[str] = mapped_column(String(512), unique=True, nullable=False)
     extension: Mapped[str] = mapped_column(String(10), nullable=False)
     tamano_bytes: Mapped[int] = mapped_column(default=0)
+    seccion: Mapped[str] = mapped_column(String(20), default="manual")
     perfil: Mapped[str] = mapped_column(String(40), default="")
     chunks: Mapped[int] = mapped_column(default=0)
     estado: Mapped[str] = mapped_column(String(20), default="pendiente")

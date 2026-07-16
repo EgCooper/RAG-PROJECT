@@ -1,5 +1,6 @@
 import uuid
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel, Field
 
@@ -52,6 +53,7 @@ class SessionDetail(BaseModel):
 class ChatRequest(BaseModel):
     pregunta: str = Field(..., min_length=1)
     session_id: uuid.UUID | None = None
+    filtro: Literal["todos", "documentos", "informes"] = "todos"
 
 
 class ChatResponse(BaseModel):
@@ -73,6 +75,7 @@ class DocumentOut(BaseModel):
     nombre: str
     extension: str
     tamano_bytes: int
+    seccion: str = "manual"
     perfil: str
     chunks: int
     estado: str
@@ -81,6 +84,10 @@ class DocumentOut(BaseModel):
     actualizado_en: datetime
 
     model_config = {"from_attributes": True}
+
+
+class DocumentSeccionPatch(BaseModel):
+    seccion: Literal["manual", "informe"]
 
 
 class DocumentUploadResponse(BaseModel):

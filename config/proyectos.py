@@ -2,7 +2,7 @@
 
 from src.llm.prompt import construir_system_prompt
 
-# Seeds por defecto al bootstrap
+# Seeds por defecto al bootstrap (solo estos 3)
 PROYECTOS_SEED = (
     {
         "slug": "ach",
@@ -11,12 +11,21 @@ PROYECTOS_SEED = (
         "config": {"dominio": "ach", "usa_tablas_ach": True},
     },
     {
-        "slug": "feel-banca",
-        "nombre": "FEEL BANCA",
-        "descripcion": "Sistema FEEL BANCA — documentación técnica",
-        "config": {"dominio": "feel-banca", "usa_tablas_ach": False},
+        "slug": "feel",
+        "nombre": "FEEL",
+        "descripcion": "Sistema FEEL — documentación técnica",
+        "config": {"dominio": "feel", "usa_tablas_ach": False},
+    },
+    {
+        "slug": "banca",
+        "nombre": "BANCA",
+        "descripcion": "Sistema BANCA — documentación técnica",
+        "config": {"dominio": "banca", "usa_tablas_ach": False},
     },
 )
+
+# Slugs antiguos que ya no deben aparecer en la UI
+PROYECTOS_OBSOLETOS = ("feel-banca",)
 
 DEFAULT_PROYECTO_SLUG = "ach"
 

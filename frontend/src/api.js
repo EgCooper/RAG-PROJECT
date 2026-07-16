@@ -87,9 +87,10 @@ export async function eliminarTodasSesiones() {
   return res.json();
 }
 
-export async function enviarPregunta(pregunta, sessionId) {
+export async function enviarPregunta(pregunta, sessionId, filtro = null) {
   const body = { pregunta };
   if (sessionId) body.session_id = sessionId;
+  if (filtro?.modo && filtro.modo !== "todos") body.filtro = filtro.modo;
 
   const res = await fetch(`${API}/chat`, {
     method: "POST",
@@ -98,6 +99,59 @@ export async function enviarPregunta(pregunta, sessionId) {
   });
   if (!res.ok) throw new Error(await parseError(res));
   return res.json();
+}
+
+/**
+ * Streaming SSE de /api/chat/stream.
+ * onEvent({type, ...}) recibe meta | token | done | error.
+ * filtro: { modo: 'todos'|'documentos'|'informes' }
+ */
+export async function enviarPreguntaStream(pregunta, sessionId, onEvent, filtro = null) {
+  const body = { pregunta };
+  if (sessionId) body.session_id = sessionId;
+  if (filtro?.modo && filtro.modo !== "todos") body.filtro = filtro.modo;
+
+  const res = await fetch(`${API}/chat/stream`, {
+    method: "POST",
+    headers: headers({ "Content-Type": "application/json", Accept: "text/event-stream" }),
+    body: JSON.stringify(body),
+  });
+
+  if (!res.ok) throw new Error(await parseError(res));
+  if (!res.body) throw new Error("El navegador no soporta streaming");
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+
+    const partes = buffer.split("\n\n");
+    buffer = partes.pop() || "";
+
+    for (const bloque of partes) {
+      const lineas = bloque.split("\n");
+      for (const linea of lineas) {
+        const trimmed = linea.trim();
+        if (!trimmed.startsWith("data:")) continue;
+        const raw = trimmed.slice(5).trim();
+        if (!raw) continue;
+        let evento;
+        try {
+          evento = JSON.parse(raw);
+        } catch {
+          continue;
+        }
+        onEvent?.(evento);
+        if (evento.type === "error") {
+          throw new Error(evento.detail || "Error en el stream");
+        }
+      }
+    }
+  }
 }
 
 export async function obtenerConfigUpload() {
@@ -110,8 +164,9 @@ export async function obtenerConfigUpload() {
   };
 }
 
-export async function listarDocumentos() {
-  const res = await fetch(`${API}/documents`, { headers: headers() });
+export async function listarDocumentos(seccion = null) {
+  const params = seccion ? `?seccion=${encodeURIComponent(seccion)}` : "";
+  const res = await fetch(`${API}/documents${params}`, { headers: headers() });
   if (!res.ok) throw new Error(await parseError(res));
   return res.json();
 }
@@ -122,14 +177,25 @@ export async function obtenerEstadisticasIndice() {
   return res.json();
 }
 
-export async function subirDocumento(archivo) {
+export async function subirDocumento(archivo, seccion = "manual") {
   const form = new FormData();
   form.append("archivo", archivo);
+  form.append("seccion", seccion);
 
   const res = await fetch(`${API}/documents/upload`, {
     method: "POST",
     headers: headers(),
     body: form,
+  });
+  if (!res.ok) throw new Error(await parseError(res));
+  return res.json();
+}
+
+export async function actualizarSeccionDocumento(documentId, seccion) {
+  const res = await fetch(`${API}/documents/${documentId}`, {
+    method: "PATCH",
+    headers: headers({ "Content-Type": "application/json" }),
+    body: JSON.stringify({ seccion }),
   });
   if (!res.ok) throw new Error(await parseError(res));
   return res.json();
@@ -144,8 +210,9 @@ export async function eliminarDocumento(documentId) {
   return res.json();
 }
 
-export async function eliminarTodosDocumentos() {
-  const res = await fetch(`${API}/documents`, {
+export async function eliminarTodosDocumentos(seccion = null) {
+  const params = seccion ? `?seccion=${encodeURIComponent(seccion)}` : "";
+  const res = await fetch(`${API}/documents${params}`, {
     method: "DELETE",
     headers: headers(),
   });
